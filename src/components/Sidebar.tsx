@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import NotificationBell from './NotificationBell'
 
 const navItems = [
   { to: '/',        icon: LayoutDashboard, label: 'Dashboard'  },
@@ -100,7 +101,8 @@ export default function Sidebar() {
         <div className="px-4 py-5 border-b border-stone-200 shrink-0">
           <div className="flex items-center gap-2">
             <Heart size={18} className="text-ember-600 fill-ember-600" />
-            <span className="font-semibold text-stone-900 tracking-tight">DateFlow</span>
+            <span className="font-semibold text-stone-900 tracking-tight flex-1">DateFlow</span>
+            <NotificationBell />
           </div>
           <p className="text-xs text-stone-400 mt-0.5 ml-6">Planeje sem complicação</p>
         </div>
@@ -117,7 +119,8 @@ export default function Sidebar() {
           <Menu size={20} className="text-stone-700" />
         </button>
         <Heart size={15} className="text-ember-600 fill-ember-600" />
-        <span className="font-semibold text-stone-900 text-sm tracking-tight">DateFlow</span>
+        <span className="font-semibold text-stone-900 text-sm tracking-tight flex-1">DateFlow</span>
+        <NotificationBell />
       </header>
 
       {/* ══ MOBILE: overlay ══ */}

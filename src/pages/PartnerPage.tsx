@@ -117,7 +117,7 @@ export default function PartnerPage() {
         <h1 className="text-base font-semibold text-stone-900">Acesso compartilhado</h1>
       </div>
       <p className="text-sm text-stone-500 mb-6">
-        Pessoas com acesso podem ver seus dates e adicionar observações.
+        Pessoa com acesso podem ver seus dates e adicionar observações.
       </p>
 
       {/* ── Enviar convite ── */}

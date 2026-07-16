@@ -164,3 +164,17 @@ export async function getDatesByOwnerForViewer(ownerId: string, viewerUid: strin
   const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as DateEvent))
 }
+
+/**
+ * Conta convites de parceria pendentes recebidos pelo usuário.
+ * Busca apenas pelo email (pois convites são criados antes do destinatário logar).
+ */
+export async function getPendingInviteCount(userEmail: string): Promise<number> {
+  const q = query(
+    collection(db, 'partnerships'),
+    where('recipientEmail', '==', userEmail.toLowerCase()),
+    where('status', '==', 'pending'),
+  )
+  const snap = await getDocs(q)
+  return snap.size
+}
