@@ -10,9 +10,10 @@ import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
 import { formatDate, buildGoogleCalendarUrl, generateId } from '../lib/utils'
+import { getPronouns } from '../lib/gender'
 import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
-import type { DateStatus, ExpenseItem } from '../types'
+import type { DateStatus, ExpenseItem, PartnerGender } from '../types'
 
 const COURAGE_QUOTES = [
   { text: 'A coragem não é a ausência do medo, mas o julgamento de que algo é mais importante que ele.', author: 'Ambrose Redmoon' },
@@ -54,10 +55,11 @@ export default function DateDetail() {
 
   const date = dates.find(d => d.id === id)
 
-  // Nome de quem é o date (withPartnerId resolvido)
+  // Nome e gênero de quem é o date (withPartnerId resolvido)
   const [withPartnerName, setWithPartnerName] = useState<string | null>(null)
+  const [withPartnerGender, setWithPartnerGender] = useState<PartnerGender | undefined>(undefined)
   useEffect(() => {
-    if (!user || !date?.withPartnerId) { setWithPartnerName(null); return }
+    if (!user || !date?.withPartnerId) { setWithPartnerName(null); setWithPartnerGender(undefined); return }
     dbApi.getMyPartnerships(user.uid, user.email ?? undefined).then(all => {
       const p = all.find(p =>
         p.requesterId === date.withPartnerId || p.recipientId === date.withPartnerId
@@ -67,6 +69,7 @@ export default function DateDetail() {
       const name  = isMe ? p.recipientName  : p.requesterName
       const email = isMe ? p.recipientEmail : p.requesterEmail
       setWithPartnerName(name || email || null)
+      setWithPartnerGender(p.partnerGender)
     })
   }, [user, date?.withPartnerId])
 
@@ -213,8 +216,13 @@ export default function DateDetail() {
 
   const expenses = date.expenses ?? []
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
-  const isActive = date.status === 'confirmed' || date.status === 'done'
+  const isConfirmed = date.status === 'confirmed'
+  const isDone = date.status === 'done'
+  const isActive = isConfirmed || isDone
   const diff = date.budget != null ? totalExpenses - date.budget : null
+
+  // Pronomes dinâmicos baseados no gênero da parceira/parceiro
+  const pg = getPronouns(withPartnerGender)
 
   return (
     <div className="p-5 md:p-7 max-w-xl">
@@ -274,7 +282,7 @@ export default function DateDetail() {
         {date.partnerDecision === 'declined' && date.partnerDecisionReason && (
           <div className="px-4 py-2.5 border-t border-stone-100">
             <p className="text-xs text-stone-400 mb-0.5 flex items-center gap-1">
-              <MessageCircle size={11} /> Motivo dela:
+              <MessageCircle size={11} /> {pg.reasonOf}
             </p>
             <p className="text-sm text-stone-600 italic">"{date.partnerDecisionReason}"</p>
           </div>
@@ -310,13 +318,13 @@ export default function DateDetail() {
         )}
       </div>
 
-      {/* ── Visibilidade + Dicas para a parceira ── */}
+      {/* ── Visibilidade + Dicas para a parceira/parceiro ── */}
       {date.withPartnerId && (
         <div className="card p-4 mb-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
               <Lightbulb size={12} className="text-amber-400" />
-              Para a parceira
+              {pg.forPartner}
             </p>
             {/* Toggle ocultar/mostrar */}
             <button
@@ -326,7 +334,7 @@ export default function DateDetail() {
                   ? 'bg-violet-100 text-violet-700'
                   : 'bg-stone-100 text-stone-500'
               }`}
-              title={date.hiddenFromPartner ? 'Data oculta — ela só vê as dicas' : 'Ela vê todos os detalhes'}
+              title={date.hiddenFromPartner ? `Data oculta — ${pg.subject} só vê as dicas` : `${pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} vê todos os detalhes`}
             >
               {date.hiddenFromPartner
                 ? <><EyeOff size={12} /> Date oculto</>
@@ -337,7 +345,7 @@ export default function DateDetail() {
 
           {date.hiddenFromPartner && (
             <p className="text-xs text-violet-600 bg-violet-50 rounded-lg px-3 py-2 mb-3">
-              Ela não vê o título, local nem descrição — apenas as dicas abaixo.
+              {pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} não vê o título, local nem descrição — apenas as dicas abaixo.
             </p>
           )}
 
@@ -346,7 +354,7 @@ export default function DateDetail() {
             {(date.partnerHints ?? []).length === 0 && (
               <p className="text-xs text-stone-400 italic">
                 {date.hiddenFromPartner
-                  ? 'Nenhuma dica ainda — adicione ao menos uma para ela.'
+                  ? `Nenhuma dica ainda — adicione ao menos uma para ${pg.subject}.`
                   : 'Nenhuma dica ainda.'}
               </p>
             )}
@@ -384,14 +392,27 @@ export default function DateDetail() {
         </div>
       )}
 
-      {/* ── Controle financeiro ── */}
+      {/* ── Orçamento (só leitura) — visível antes do date ser confirmado ── */}
+      {!isActive && date.budget != null && (
+        <div className="card px-4 py-3 mb-5 flex items-center justify-between">
+          <span className="flex items-center gap-2 text-sm text-stone-500">
+            <DollarSign size={14} className="text-stone-400" />
+            Orçamento planejado
+          </span>
+          <span className="text-sm font-semibold text-stone-800">{fmt(date.budget)}</span>
+        </div>
+      )}
+
+      {/* ── Controle financeiro — disponível a partir de "Confirmado" ── */}
       {isActive && (
         <div className="card mb-5 overflow-hidden">
           {/* Cabeçalho */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <DollarSign size={14} className="text-stone-400" />
-              <span className="text-sm font-medium text-stone-700">Gastos do date</span>
+              <span className="text-sm font-medium text-stone-700">
+                {isDone ? 'Resumo financeiro' : 'Gastos do date'}
+              </span>
             </div>
             {/* Toggle privacidade */}
             <button
@@ -401,10 +422,10 @@ export default function DateDetail() {
                   ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-stone-100 text-stone-500'
               }`}
-              title={date.shareFinance ? 'Ela vê os gastos' : 'Gastos privados'}
+              title={date.shareFinance ? pg.seesExpenses : 'Gastos privados'}
             >
               {date.shareFinance
-                ? <><Eye size={12} /> Visível para ela</>
+                ? <><Eye size={12} /> {pg.visibleFor}</>
                 : <><EyeOff size={12} /> Só você vê</>
               }
             </button>
@@ -429,7 +450,7 @@ export default function DateDetail() {
                       style={{ width: `${Math.min((totalExpenses / date.budget) * 100, 100)}%` }}
                     />
                   </div>
-                  {diff != null && (
+                  {diff != null && totalExpenses > 0 && (
                     <div className="flex items-center gap-1 text-xs">
                       {diff > 0
                         ? <><TrendingUp size={11} className="text-red-400" /><span className="text-red-500 font-medium">+{fmt(diff)} acima do planejado</span></>
@@ -450,47 +471,61 @@ export default function DateDetail() {
                   <span className="text-sm text-stone-700 truncate flex-1">{exp.label}</span>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     <span className="text-sm font-medium text-stone-800">{fmt(exp.amount)}</span>
-                    <button
-                      onClick={() => removeExpense(exp.id)}
-                      className="opacity-0 group-hover:opacity-100 text-stone-300 hover:text-red-500 transition-all"
-                    >
-                      <Trash size={13} />
-                    </button>
+                    {!isDone && (
+                      <button
+                        onClick={() => removeExpense(exp.id)}
+                        className="opacity-0 group-hover:opacity-100 text-stone-300 hover:text-red-500 transition-all"
+                      >
+                        <Trash size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Input de novo gasto */}
-          <div className="px-4 pb-4">
-            <div className="flex gap-2">
-              <input
-                className="input flex-1 text-sm"
-                value={expenseLabel}
-                onChange={e => setExpenseLabel(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), amountRef.current?.focus())}
-              />
-              <div className="relative w-28">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">R$</span>
+          {/* Input de novo gasto — só disponível durante o date (confirmed), não após (done) */}
+          {isConfirmed && (
+            <div className="px-4 pb-4">
+              <p className="text-xs text-stone-400 mb-2">O que você gastou?</p>
+              <div className="flex gap-2">
                 <input
-                  ref={amountRef}
-                  className="input text-sm pl-7 w-full"
-                  inputMode="decimal"
-                  value={expenseAmount}
-                  onChange={e => setExpenseAmount(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addExpense())}
+                  className="input flex-1 text-sm"
+                  placeholder="Ex: Jantar, Uber…"
+                  value={expenseLabel}
+                  onChange={e => setExpenseLabel(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), amountRef.current?.focus())}
                 />
+                <div className="relative w-28">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">R$</span>
+                  <input
+                    ref={amountRef}
+                    className="input text-sm pl-7 w-full"
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    value={expenseAmount}
+                    onChange={e => setExpenseAmount(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addExpense())}
+                  />
+                </div>
+                <button
+                  onClick={addExpense}
+                  className="btn-primary shrink-0 px-3"
+                  aria-label="Adicionar gasto"
+                >
+                  <Plus size={15} />
+                </button>
               </div>
-              <button
-                onClick={addExpense}
-                className="btn-primary shrink-0 px-3"
-                aria-label="Adicionar gasto"
-              >
-                <Plus size={15} />
-              </button>
             </div>
-          </div>
+          )}
+
+          {/* Aviso quando o date já foi realizado e não há gastos */}
+          {isDone && expenses.length === 0 && (
+            <p className="px-4 pb-4 text-xs text-stone-400 italic">
+              Nenhum gasto registrado durante o date.
+            </p>
+          )}
         </div>
       )}
 
@@ -594,7 +629,7 @@ export default function DateDetail() {
             </button>
             <button onClick={() => setStatus('waiting_reply')} className="btn-secondary flex-1 justify-center">
               <MessageCircle size={13} />
-              Chamei ela
+              {pg.calledThem}
             </button>
           </>
         )}
@@ -606,7 +641,7 @@ export default function DateDetail() {
             </button>
             <button onClick={() => setStatus('waiting_reply')} className="btn-secondary flex-1 justify-center">
               <MessageCircle size={13} />
-              Chamei ela
+              {pg.calledThem}
             </button>
           </>
         )}
@@ -645,7 +680,7 @@ export default function DateDetail() {
       {/* ── Modal: Compartilhar ── */}
       <Modal open={shareOpen} onClose={() => setShareOpen(false)} title="Compartilhar date">
         <p className="text-xs text-stone-500 mb-3">
-          Envie o link abaixo para ela ver os detalhes do date.
+          Envie o link abaixo para {pg.subject} ver os detalhes do date.
         </p>
         <div className="flex gap-2 mb-3">
           <input
@@ -675,7 +710,7 @@ export default function DateDetail() {
           </div>
           <div>
             <p className="text-sm font-medium text-stone-800">
-              {date.shareFinance ? 'Ela vê os gastos' : 'Gastos privados'}
+              {date.shareFinance ? pg.seesExpenses : 'Gastos privados'}
             </p>
             <p className="text-xs text-stone-500 mt-0.5">
               {date.shareFinance

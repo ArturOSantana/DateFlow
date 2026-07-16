@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
 import * as dbApi from '../lib/db'
 import { generateId, generateShareToken } from '../lib/utils'
+import { getPronouns } from '../lib/gender'
 import type { ChecklistItem, DateEvent, DateStatus, Partnership } from '../types'
 
 const EMPTY: Omit<DateEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
@@ -17,7 +18,6 @@ const EMPTY: Omit<DateEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
   checklist: [],
   tags: [],
   budget: undefined,
-  actualCost: undefined,
   hiddenFromPartner: false,
   partnerHints: [],
 }
@@ -54,7 +54,6 @@ export default function DateForm() {
           tags: existing.tags,
           shareToken: existing.shareToken,
           budget: existing.budget,
-          actualCost: existing.actualCost,
           rating: existing.rating,
           review: existing.review,
           withPartnerId: existing.withPartnerId,
@@ -115,7 +114,12 @@ export default function DateForm() {
       return
     }
     if (form.hiddenFromPartner && form.withPartnerId && (!form.partnerHints || form.partnerHints.length === 0)) {
-      setError('Adicione ao menos uma dica para a parceira, já que o date está oculto para ela.')
+      const selP = partnerships.find(p => {
+        const uid = p.requesterId === user!.uid ? p.recipientId : p.requesterId
+        return uid === form.withPartnerId
+      })
+      const pg = getPronouns(selP?.partnerGender)
+      setError(`Adicione ao menos uma dica para ${pg.thePartner}, já que o date está oculto para ${pg.subject}.`)
       return
     }
     setSaving(true)
@@ -200,50 +204,44 @@ export default function DateForm() {
           />
         </div>
 
-        {/* Controle financeiro */}
+        {/* Orçamento planejado — gasto real é registrado item a item durante o date */}
         <div>
           <label className="label flex items-center gap-1">
             <DollarSign size={12} className="text-stone-400" />
-            Controle financeiro
+            Orçamento planejado (R$)
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-stone-400 mb-1 block">Orçamento (R$)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                className="input"
-                placeholder="0,00"
-                value={form.budget ?? ''}
-                onChange={e => set('budget', e.target.value === '' ? undefined : parseFloat(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="text-xs text-stone-400 mb-1 block">Gasto real (R$)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                className="input"
-                placeholder="0,00"
-                value={form.actualCost ?? ''}
-                onChange={e => set('actualCost', e.target.value === '' ? undefined : parseFloat(e.target.value))}
-              />
-            </div>
-          </div>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            className="input"
+            placeholder="0,00"
+            value={form.budget ?? ''}
+            onChange={e => set('budget', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+          />
+          <p className="text-xs text-stone-400 mt-1">
+            Os gastos reais são registrados durante o date, item por item.
+          </p>
         </div>
 
         {/* Com quem é esse date — só aparece se há parcerias aceitas com UID preenchido */}
         {partnerships.filter(p => {
           const uid = p.requesterId === user!.uid ? p.recipientId : p.requesterId
           return !!uid
-        }).length > 0 && (
+        }).length > 0 && (() => {
+          // Pronomes dinâmicos da parceria selecionada (ou default 'f' se nenhuma selecionada ainda)
+          const selectedPartnership = partnerships.find(p => {
+            const uid = p.requesterId === user!.uid ? p.recipientId : p.requesterId
+            return uid === form.withPartnerId
+          })
+          const pg = getPronouns(selectedPartnership?.partnerGender)
+
+          return (
           <div className="space-y-3">
             <div>
-              <label className="label">Compartilhar com parceira</label>
+              <label className="label">Compartilhar com {pg.partner}</label>
               <p className="text-xs text-stone-400 mb-1.5">
-                Ela só verá esse date se você marcar o nome dela aqui.
+                {pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} só verá esse date se você marcar o nome {pg.of} aqui.
               </p>
               <select
                 className="input"
@@ -267,7 +265,7 @@ export default function DateForm() {
               </select>
             </div>
 
-            {/* Opção de ocultar detalhes — só disponível quando há parceira selecionada */}
+            {/* Opção de ocultar detalhes — só disponível quando há parceira/parceiro selecionado */}
             {form.withPartnerId && (
               <div
                 className={`flex items-start gap-3 rounded-xl px-3 py-3 border cursor-pointer select-none transition-colors ${
@@ -283,14 +281,14 @@ export default function DateForm() {
                 <div>
                   <p className="text-sm font-medium text-stone-800 flex items-center gap-1.5">
                     {form.hiddenFromPartner
-                      ? <><EyeOff size={13} className="text-violet-500" /> Date oculto para ela</>
-                      : <><Eye size={13} className="text-stone-400" /> Ela vê os detalhes</>
+                      ? <><EyeOff size={13} className="text-violet-500" /> Date oculto para {pg.subject}</>
+                      : <><Eye size={13} className="text-stone-400" /> {pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} vê os detalhes</>
                     }
                   </p>
                   <p className="text-xs text-stone-500 mt-0.5">
                     {form.hiddenFromPartner
-                      ? 'Ela não vê título, local nem descrição — só as dicas abaixo.'
-                      : 'Ela pode ver todos os detalhes desse date.'}
+                      ? `${pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} não vê título, local nem descrição — só as dicas abaixo.`
+                      : `${pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} pode ver todos os detalhes desse date.`}
                   </p>
                 </div>
               </div>
@@ -301,13 +299,13 @@ export default function DateForm() {
               <div>
                 <label className="label flex items-center gap-1.5">
                   <Lightbulb size={13} className="text-amber-400" />
-                  Dicas para ela
+                  Dicas para {pg.subject}
                   {form.hiddenFromPartner && <span className="text-red-400 text-xs">(obrigatório)</span>}
                 </label>
                 <p className="text-xs text-stone-400 mb-2">
                   {form.hiddenFromPartner
-                    ? 'Já que o date está oculto, deixe dicas para ela saber o que preparar ou esperar.'
-                    : 'Opcional: deixe dicas extras para ela sobre o date.'}
+                    ? `Já que o date está oculto, deixe dicas para ${pg.subject} saber o que preparar ou esperar.`
+                    : `Opcional: deixe dicas extras para ${pg.subject} sobre o date.`}
                 </p>
                 <div className="space-y-1.5 mb-2">
                   {(form.partnerHints ?? []).map((hint, i) => (
@@ -335,7 +333,8 @@ export default function DateForm() {
               </div>
             )}
           </div>
-        )}
+          )
+        })()}
 
         <div>
           <label className="label">Status</label>

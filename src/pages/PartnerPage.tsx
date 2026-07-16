@@ -5,9 +5,10 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
-import type { Partnership, PreferenceCategory } from '../types'
+import type { Partnership, PartnerGender, PreferenceCategory } from '../types'
+import { getPronouns } from '../lib/gender'
 
-// ─── Modal de preferências da parceira ───────────────────────────────────────
+// ─── Modal de preferências ────────────────────────────────────────────────────
 
 function TagGroup({ items, color, label }: { items: string[]; color: string; label: string }) {
   if (items.length === 0) return null
@@ -27,13 +28,16 @@ function PrefsModal({
   name,
   prefs,
   loading,
+  gender,
   onClose,
 }: {
   name: string
   prefs: PreferenceCategory | null
   loading: boolean
+  gender?: PartnerGender
   onClose: () => void
 }) {
+  const p = getPronouns(gender)
   const hasContent = prefs && (
     prefs.activitiesLoves.length > 0 ||
     prefs.placesLoves.length > 0 ||
@@ -77,7 +81,7 @@ function PrefsModal({
             <div className="text-center py-8">
               <Heart size={28} className="text-stone-200 mx-auto mb-2" />
               <p className="text-sm text-stone-500">{name} ainda não preencheu as preferências.</p>
-              <p className="text-xs text-stone-400 mt-1">Quando ela preencher, você verá aqui.</p>
+              <p className="text-xs text-stone-400 mt-1">Quando {p.subject} preencher, você verá aqui.</p>
             </div>
           )}
 
@@ -136,6 +140,46 @@ function PrefsModal({
   )
 }
 
+// ─── Seletor de gênero ────────────────────────────────────────────────────────
+
+function GenderPicker({
+  value,
+  onChange,
+}: {
+  value: PartnerGender
+  onChange: (g: PartnerGender) => void
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-stone-500 mb-1.5">Gênero</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onChange('f')}
+          className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
+            value === 'f'
+              ? 'bg-rose-50 border-rose-300 text-rose-700'
+              : 'border-stone-200 text-stone-500 hover:bg-stone-50'
+          }`}
+        >
+          Ela / Parceira
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('m')}
+          className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
+            value === 'm'
+              ? 'bg-sky-50 border-sky-300 text-sky-700'
+              : 'border-stone-200 text-stone-500 hover:bg-stone-50'
+          }`}
+        >
+          Ele / Parceiro
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function PartnerPage() {
@@ -143,18 +187,22 @@ export default function PartnerPage() {
   const [partnerships, setPartnerships] = useState<Partnership[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteGender, setInviteGender] = useState<PartnerGender>('f')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   // Modal de preferências
-  const [prefsModal, setPrefsModal] = useState<{ name: string; uid: string } | null>(null)
+  const [prefsModal, setPrefsModal] = useState<{ name: string; uid: string; gender?: PartnerGender } | null>(null)
   const [loadingPrefs, setLoadingPrefs] = useState(false)
   const [viewedPrefs, setViewedPrefs] = useState<PreferenceCategory | null>(null)
 
   // Vinculação em massa
-  const [linking, setLinking] = useState<string | null>(null) // uid da parceira sendo vinculada
+  const [linking, setLinking] = useState<string | null>(null)
   const [linkedMsg, setLinkedMsg] = useState<string | null>(null)
+
+  // Edição de gênero de parceria existente
+  const [editingGender, setEditingGender] = useState<string | null>(null) // id da partnership
 
   async function load() {
     if (!user) return
@@ -180,13 +228,19 @@ export default function PartnerPage() {
     setTimeout(() => setLinkedMsg(null), 4000)
   }
 
-  async function openPrefs(name: string, uid: string) {
-    setPrefsModal({ name, uid })
+  async function openPrefs(name: string, uid: string, gender?: PartnerGender) {
+    setPrefsModal({ name, uid, gender })
     setViewedPrefs(null)
     setLoadingPrefs(true)
     const prefs = await dbApi.getUserPreferences(uid)
     setViewedPrefs(prefs)
     setLoadingPrefs(false)
+  }
+
+  async function saveGender(partnershipId: string, gender: PartnerGender) {
+    await dbApi.updatePartnership(partnershipId, { partnerGender: gender })
+    setEditingGender(null)
+    await load()
   }
 
   /** Envia convite */
@@ -202,12 +256,13 @@ export default function PartnerPage() {
       return
     }
 
-    // Limite: só pode ter uma parceira por vez (aceita ou convite pendente enviado)
+    // Limite: só pode ter uma parceira/parceiro por vez (aceita ou convite pendente enviado)
     const hasActivePartner = partnerships.some(
       p => p.requesterId === user.uid && (p.status === 'accepted' || p.status === 'pending'),
     )
     if (hasActivePartner) {
-      setError('Você já tem uma parceira ativa. Remova a parceria atual antes de convidar outra pessoa.')
+      const pg = getPronouns(partnerships.find(p => p.requesterId === user.uid)?.partnerGender)
+      setError(`Você já tem ${pg.article} ${pg.partner} ativa. Remova a parceria atual antes de convidar outra pessoa.`)
       return
     }
 
@@ -220,6 +275,7 @@ export default function PartnerPage() {
       return
     }
 
+    const pg = getPronouns(inviteGender)
     setSending(true)
     setError(null)
     try {
@@ -233,9 +289,10 @@ export default function PartnerPage() {
         recipientName: '',
         recipientPhoto: null,
         status: 'pending',
+        partnerGender: inviteGender,
       })
       setInviteEmail('')
-      setSuccess('Convite enviado! Quando ela abrir o app e clicar em "Parceira" na navegação, verá a solicitação para aceitar.')
+      setSuccess(`Convite enviado! Quando ${pg.subject} abrir o app e clicar em "${pg.Partner}" na navegação, verá a solicitação para aceitar.`)
       await load()
     } catch (err) {
       console.error('[PartnerPage] sendInvite error:', err)
@@ -250,7 +307,7 @@ export default function PartnerPage() {
     await dbApi.updatePartnership(p.id, {
       status: 'accepted',
       recipientId: user.uid,
-      recipientName: user.displayName ?? 'Usuária',
+      recipientName: user.displayName ?? 'Usuário',
       recipientPhoto: user.photoURL ?? null,
     })
     await load()
@@ -288,36 +345,39 @@ export default function PartnerPage() {
         <h1 className="text-base font-semibold text-stone-900">Acesso compartilhado</h1>
       </div>
       <p className="text-sm text-stone-500 mb-6">
-        Pessoa com acesso podem ver seus dates e adicionar observações.
+        A pessoa com acesso pode ver seus dates e adicionar observações.
       </p>
 
-      {/* ── Enviar convite — oculto quando já há parceira ativa ── */}
+      {/* ── Enviar convite — oculto quando já há parceria ativa ── */}
       {!hasActivePartner && (
-        <div className="card p-4 mb-5">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">Convidar parceira</p>
-          <p className="text-sm text-stone-600 mb-3">
-            Digite o e-mail de quem vai receber acesso aos seus dates.
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              className="input flex-1 text-sm"
-              placeholder="email@exemplo.com"
-              value={inviteEmail}
-              onChange={e => { setInviteEmail(e.target.value); setError(null); setSuccess(null) }}
-              onKeyDown={e => e.key === 'Enter' && sendInvite()}
-            />
-            <button
-              onClick={sendInvite}
-              disabled={sending}
-              className="btn-primary shrink-0"
-            >
-              <UserPlus size={14} />
-              {sending ? 'Enviando…' : 'Dar acesso'}
-            </button>
+        <div className="card p-4 mb-5 space-y-3">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Convidar {getPronouns(inviteGender).partner}</p>
+          <GenderPicker value={inviteGender} onChange={setInviteGender} />
+          <div>
+            <p className="text-xs text-stone-400 mb-1.5">
+              Digite o e-mail {getPronouns(inviteGender).of} para dar acesso aos seus dates.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                className="input flex-1 text-sm"
+                placeholder="email@exemplo.com"
+                value={inviteEmail}
+                onChange={e => { setInviteEmail(e.target.value); setError(null); setSuccess(null) }}
+                onKeyDown={e => e.key === 'Enter' && sendInvite()}
+              />
+              <button
+                onClick={sendInvite}
+                disabled={sending}
+                className="btn-primary shrink-0"
+              >
+                <UserPlus size={14} />
+                {sending ? 'Enviando…' : 'Dar acesso'}
+              </button>
+            </div>
           </div>
-          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-          {success && <p className="text-xs text-emerald-600 mt-2">{success}</p>}
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          {success && <p className="text-xs text-emerald-600">{success}</p>}
         </div>
       )}
 
@@ -365,24 +425,27 @@ export default function PartnerPage() {
         <div className="mb-5">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">Aguardando resposta</p>
           <div className="space-y-2">
-            {pendingSent.map(p => (
-              <div key={p.id} className="card p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
-                  <Clock size={16} className="text-stone-400" />
+            {pendingSent.map(p => {
+              const pg = getPronouns(p.partnerGender)
+              return (
+                <div key={p.id} className="card p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+                    <Clock size={16} className="text-stone-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-stone-700 truncate">{p.recipientEmail}</p>
+                    <p className="text-xs text-stone-400">Pendente · {pg.partner}</p>
+                  </div>
+                  <button
+                    onClick={() => removePartnership(p.id)}
+                    className="btn-ghost text-xs text-stone-400 hover:text-red-500 shrink-0"
+                    title="Cancelar convite"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-stone-700 truncate">{p.recipientEmail}</p>
-                  <p className="text-xs text-stone-400">Pendente</p>
-                </div>
-                <button
-                  onClick={() => removePartnership(p.id)}
-                  className="btn-ghost text-xs text-stone-400 hover:text-red-500 shrink-0"
-                  title="Cancelar convite"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -398,6 +461,9 @@ export default function PartnerPage() {
               const partnerEmail = isMe ? p.recipientEmail : p.requesterEmail
               const partnerPhoto = isMe ? p.recipientPhoto : p.requesterPhoto
               const partnerId    = isMe ? p.recipientId    : p.requesterId
+              const pg = getPronouns(p.partnerGender)
+              const isEditingThis = editingGender === p.id
+
               return (
                 <div key={p.id} className="card p-4">
                   <div className="flex items-center gap-3">
@@ -408,10 +474,24 @@ export default function PartnerPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-stone-900 truncate">{partnerName || partnerEmail}</p>
                       <p className="text-xs text-stone-500 truncate">{partnerEmail}</p>
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 mt-0.5">
-                        <UserCheck size={11} />
-                        Acesso ativo
-                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                          <UserCheck size={11} />
+                          Acesso ativo
+                        </span>
+                        <span className="text-stone-300">·</span>
+                        {/* Tag de gênero clicável */}
+                        <button
+                          onClick={() => setEditingGender(isEditingThis ? null : p.id)}
+                          className={`text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
+                            p.partnerGender === 'm'
+                              ? 'bg-sky-50 border-sky-200 text-sky-700'
+                              : 'bg-rose-50 border-rose-200 text-rose-700'
+                          }`}
+                        >
+                          {pg.partner}
+                        </button>
+                      </div>
                     </div>
                     <button
                       onClick={() => removePartnership(p.id)}
@@ -422,6 +502,17 @@ export default function PartnerPage() {
                     </button>
                   </div>
 
+                  {/* Inline: editar gênero */}
+                  {isEditingThis && (
+                    <div className="mt-3 pt-3 border-t border-stone-100">
+                      <GenderPicker
+                        value={p.partnerGender ?? 'f'}
+                        onChange={g => saveGender(p.id, g)}
+                      />
+                      <p className="text-xs text-stone-400 mt-1.5">Toque para alterar e salvar.</p>
+                    </div>
+                  )}
+
                   {/* Ações do card */}
                   {partnerId && (
                     <div className="space-y-2 mt-3 pt-3 border-t border-stone-100">
@@ -431,10 +522,10 @@ export default function PartnerPage() {
                           className="btn-secondary text-xs flex-1 justify-center"
                         >
                           <ChevronDown size={13} />
-                          Ver dates dela
+                          {pg.viewDates}
                         </a>
                         <button
-                          onClick={() => openPrefs(partnerName || partnerEmail, partnerId)}
+                          onClick={() => openPrefs(partnerName || partnerEmail, partnerId, p.partnerGender)}
                           className="btn-secondary text-xs flex-1 justify-center"
                         >
                           <Heart size={13} className="text-rose-400" />
@@ -446,10 +537,7 @@ export default function PartnerPage() {
                         disabled={linking === partnerId}
                         className="btn-secondary text-xs w-full justify-center text-violet-700 border-violet-200 hover:bg-violet-50"
                       >
-                        {linking === partnerId
-                          ? 'Vinculando…'
-                          : 'Compartilhar todos os meus dates com ela'
-                        }
+                        {linking === partnerId ? 'Vinculando…' : pg.shareAllDates}
                       </button>
                       {linkedMsg && <p className="text-xs text-emerald-600 text-center">{linkedMsg}</p>}
                     </div>
@@ -476,6 +564,7 @@ export default function PartnerPage() {
           name={prefsModal.name}
           prefs={viewedPrefs}
           loading={loadingPrefs}
+          gender={prefsModal.gender}
           onClose={() => { setPrefsModal(null); setViewedPrefs(null) }}
         />
       )}

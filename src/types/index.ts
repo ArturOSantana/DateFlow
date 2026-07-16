@@ -67,6 +67,9 @@ export interface DateEvent {
 /** Status do convite de parceria */
 export type PartnershipStatus = 'pending' | 'accepted' | 'rejected'
 
+/** Gênero da pessoa convidada, definido por quem envia o convite */
+export type PartnerGender = 'f' | 'm'
+
 /**
  * Representa o vínculo entre dois usuários (quem enviou e quem recebeu).
  * Armazenada na coleção `partnerships` do Firestore.
@@ -84,6 +87,12 @@ export interface Partnership {
   recipientName: string
   recipientPhoto?: string | null
   status: PartnershipStatus
+  /**
+   * Gênero da pessoa convidada (definido por quem enviou o convite).
+   * 'f' = ela / parceira  |  'm' = ele / parceiro
+   * Default implícito: 'f'
+   */
+  partnerGender?: PartnerGender
   /** Motivo da recusa do convite de parceria (preenchido pela destinatária) */
   rejectionReason?: string
   createdAt: number

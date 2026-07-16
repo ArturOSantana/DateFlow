@@ -15,22 +15,26 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useApp } from '../contexts/AppContext'
+import { getPronouns } from '../lib/gender'
 import NotificationBell from './NotificationBell'
-
-const navItems = [
-  { to: '/',        icon: LayoutDashboard, label: 'Dashboard'  },
-  { to: '/dates',   icon: CalendarDays,    label: 'Meus Dates' },
-  { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'     },
-  { to: '/history', icon: History,         label: 'Histórico'  },
-  { to: '/finance', icon: Wallet,          label: 'Finanças'   },
-  { to: '/partner', icon: Users,           label: 'Parceira'   },
-  { to: '/profile', icon: User,            label: 'Perfil'     },
-]
 
 /** Conteúdo compartilhado entre sidebar desktop e drawer mobile */
 function NavContent({ onClose }: { onClose?: () => void }) {
   const { user, logout } = useAuth()
+  const { partnerGender } = useApp()
   const navigate = useNavigate()
+  const pg = getPronouns(partnerGender)
+
+  const navItems = [
+    { to: '/',        icon: LayoutDashboard, label: 'Dashboard'  },
+    { to: '/dates',   icon: CalendarDays,    label: 'Meus Dates' },
+    { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'     },
+    { to: '/history', icon: History,         label: 'Histórico'  },
+    { to: '/finance', icon: Wallet,          label: 'Finanças'   },
+    { to: '/partner', icon: Users,           label: pg.Partner   },
+    { to: '/profile', icon: User,            label: 'Perfil'     },
+  ]
 
   function go(path: string) {
     navigate(path)

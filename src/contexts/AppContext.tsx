@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import * as db from '../lib/db'
-import type { DateEvent, Idea } from '../types'
+import type { DateEvent, Idea, PartnerGender } from '../types'
 
 interface AppContextType {
   dates: DateEvent[]
@@ -9,6 +9,9 @@ interface AppContextType {
   loading: boolean
   refreshDates: () => Promise<void>
   refreshIdeas: () => Promise<void>
+  /** Gênero da parceria ativa do usuário (para textos dinâmicos na UI) */
+  partnerGender: PartnerGender | undefined
+  refreshPartnerGender: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -18,6 +21,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dates, setDates] = useState<DateEvent[]>([])
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [loading, setLoading] = useState(false)
+  const [partnerGender, setPartnerGender] = useState<PartnerGender | undefined>(undefined)
 
   const refreshDates = useCallback(async () => {
     if (!user) return
@@ -31,18 +35,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIdeas(data)
   }, [user])
 
+  const refreshPartnerGender = useCallback(async () => {
+    if (!user) return
+    const all = await db.getMyPartnerships(user.uid, user.email ?? undefined)
+    const active = all.find(p => p.status === 'accepted')
+    setPartnerGender(active?.partnerGender)
+  }, [user])
+
   useEffect(() => {
     if (!user) {
       setDates([])
       setIdeas([])
+      setPartnerGender(undefined)
       return
     }
     setLoading(true)
-    Promise.all([refreshDates(), refreshIdeas()]).finally(() => setLoading(false))
-  }, [user, refreshDates, refreshIdeas])
+    Promise.all([refreshDates(), refreshIdeas(), refreshPartnerGender()]).finally(() => setLoading(false))
+  }, [user, refreshDates, refreshIdeas, refreshPartnerGender])
 
   return (
-    <AppContext.Provider value={{ dates, ideas, loading, refreshDates, refreshIdeas }}>
+    <AppContext.Provider value={{ dates, ideas, loading, refreshDates, refreshIdeas, partnerGender, refreshPartnerGender }}>
       {children}
     </AppContext.Provider>
   )

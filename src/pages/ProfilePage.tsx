@@ -4,6 +4,7 @@ import { LogOut, User, ChevronRight, Users, Heart, MapPin, Utensils, Save, Plus,
 import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
 import * as dbApi from '../lib/db'
+import { getPronouns } from '../lib/gender'
 import type { PreferenceCategory } from '../types'
 
 const EMPTY_PREFS: PreferenceCategory = {
@@ -81,7 +82,7 @@ function TagList({
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, logout } = useAuth()
-  const { dates, ideas } = useApp()
+  const { dates, ideas, partnerGender } = useApp()
   const navigate = useNavigate()
 
   const [prefs, setPrefs] = useState<PreferenceCategory>(EMPTY_PREFS)
@@ -129,6 +130,8 @@ export default function ProfilePage() {
     setTimeout(() => setSaved(false), 2500)
   }
 
+  const pg = getPronouns(partnerGender)
+
   return (
     <div className="p-5 md:p-7 max-w-lg">
       <h1 className="text-base font-semibold text-stone-900 mb-5">Perfil</h1>
@@ -161,7 +164,7 @@ export default function ProfilePage() {
             <div className="flex-1">
               <p className="text-sm font-semibold text-rose-800">Conte suas preferências</p>
               <p className="text-xs text-rose-600 mt-0.5 leading-relaxed">
-                Adicione o que você gosta, onde quer ir e o que come — ele usará isso para planejar os dates perfeitos para você.
+                Adicione o que você gosta, onde quer ir e o que come — {pg.subject} usará isso para planejar os dates perfeitos para você.
               </p>
               <p className="text-xs font-medium text-rose-500 mt-2">Toque para preencher →</p>
             </div>
@@ -195,8 +198,8 @@ export default function ProfilePage() {
           {!prefsOpen && (
             <p className="px-4 pb-3.5 text-xs text-stone-400 -mt-1">
               {hasAnyPref
-                ? 'Ele vê essas informações ao planejar os dates.'
-                : 'Toque para preencher — ele vai adorar saber o que você gosta.'}
+                ? `${pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} vê essas informações ao planejar os dates.`
+                : `Toque para preencher — ${pg.subject} vai adorar saber o que você gosta.`}
             </p>
           )}
 
@@ -204,7 +207,7 @@ export default function ProfilePage() {
           {prefsOpen && (
             <div className="border-t border-stone-100 px-4 pt-4 pb-4 space-y-4">
               <p className="text-xs text-stone-400">
-                Ele verá essas informações ao planejar os dates com você.
+                {pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} verá essas informações ao planejar os dates com você.
               </p>
 
               {/* Atividades */}
@@ -279,7 +282,7 @@ export default function ProfilePage() {
                 <textarea
                   className="textarea text-sm"
                   rows={3}
-                  placeholder="Qualquer outra coisa que ele deva saber sobre você…"
+                  placeholder={`Qualquer outra coisa que ${pg.subject} deva saber sobre você…`}
                   value={prefs.otherNotes}
                   onChange={e => setField('otherNotes', e.target.value)}
                 />

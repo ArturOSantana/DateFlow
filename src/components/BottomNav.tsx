@@ -8,10 +8,13 @@ import {
   User,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useApp } from '../contexts/AppContext'
+import { getPronouns } from '../lib/gender'
 import { getPendingInviteCount } from '../lib/db'
 
 export default function BottomNav() {
   const { user } = useAuth()
+  const { partnerGender } = useApp()
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -27,12 +30,14 @@ export default function BottomNav() {
     return () => { cancelled = true; clearInterval(interval) }
   }, [user])
 
+  const pg = getPronouns(partnerGender)
+
   const items = [
-    { to: '/',        icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/dates',   icon: CalendarDays,    label: 'Dates'     },
-    { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'    },
-    { to: '/partner', icon: Users,           label: 'Parceira', badge: pendingCount },
-    { to: '/profile', icon: User,            label: 'Perfil'    },
+    { to: '/',        icon: LayoutDashboard, label: 'Dashboard'     },
+    { to: '/dates',   icon: CalendarDays,    label: 'Dates'         },
+    { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'        },
+    { to: '/partner', icon: Users,           label: pg.Partner, badge: pendingCount },
+    { to: '/profile', icon: User,            label: 'Perfil'        },
   ]
 
   return (
