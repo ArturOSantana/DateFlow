@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-stone-50 text-stone-900;
+  }
+
+  * {
+    @apply border-stone-200;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-stone-900 text-stone-50 text-sm font-medium rounded-lg hover:bg-stone-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-2 text-stone-600 text-sm font-medium rounded-lg hover:bg-stone-100 transition-colors;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ember-600/20 focus:border-ember-600 transition-colors;
+  }
+
+  .textarea {
+    @apply w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ember-600/20 focus:border-ember-600 transition-colors resize-none;
+  }
+
+  .card {
+    @apply bg-white border border-stone-200 rounded-xl;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition-colors;
+  }
+
+  .nav-item-active {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-stone-900 text-stone-50;
+  }
+
+  .status-waiting-courage {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-rose-700 bg-rose-50 px-2 py-1 rounded-full;
+  }
+
+  .status-waiting-money {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full;
+  }
+
+  .status-waiting-reply {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 bg-sky-50 px-2 py-1 rounded-full;
+  }
+
+  .status-confirmed {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full;
+  }
+
+  .status-cancelled {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 bg-stone-100 px-2 py-1 rounded-full;
+  }
+
+  .status-done {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded-full;
+  }
+}
