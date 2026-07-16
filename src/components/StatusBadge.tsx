@@ -25,7 +25,7 @@ const dots: Record<DateStatus, string> = {
   waiting_reply:   'bg-sky-400',
   confirmed:       'bg-emerald-500',
   cancelled:       'bg-stone-400',
-  done:            'bg-blue-500',
+  done:            'bg-violet-500',
 }
 
 export default function StatusBadge({ status }: { status: DateStatus }) {

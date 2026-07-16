@@ -16,7 +16,6 @@ export default function FinancePage() {
   const { dates } = useApp()
   const navigate = useNavigate()
 
-  // Apenas dates que têm pelo menos um valor financeiro preenchido
   const withFinance = useMemo(
     () => dates.filter(d => d.budget != null || d.actualCost != null),
     [dates],
@@ -25,24 +24,24 @@ export default function FinancePage() {
   const stats = useMemo(() => {
     const totalBudget = withFinance.reduce((s, d) => s + (d.budget ?? 0), 0)
     const totalSpent  = withFinance.reduce((s, d) => s + (d.actualCost ?? 0), 0)
-    const doneSpent   = dates
-      .filter(d => d.status === 'done' && d.actualCost != null)
-      .reduce((s, d) => s + (d.actualCost ?? 0), 0)
     const overBudget  = withFinance.filter(
       d => d.budget != null && d.actualCost != null && d.actualCost > d.budget,
     ).length
-    return { totalBudget, totalSpent, doneSpent, overBudget }
-  }, [withFinance, dates])
+    return { totalBudget, totalSpent, overBudget }
+  }, [withFinance])
 
   const diff = stats.totalSpent - stats.totalBudget
-  const overBudgetAll = diff > 0
+  const over = diff > 0
+  const pct  = stats.totalBudget > 0
+    ? Math.min((stats.totalSpent / stats.totalBudget) * 100, 100)
+    : 0
 
   return (
     <div className="p-5 md:p-7 max-w-2xl">
-      <h1 className="text-base font-semibold text-stone-900 mb-1">Controle financeiro</h1>
-      <p className="text-xs text-stone-400 mb-5">
-        Resumo de orçamento e gastos dos seus dates
-      </p>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-stone-900">Finanças</h1>
+        <p className="text-sm text-stone-400 mt-0.5">Orçamento e gastos dos seus dates</p>
+      </div>
 
       {withFinance.length === 0 ? (
         <EmptyState
@@ -52,50 +51,55 @@ export default function FinancePage() {
         />
       ) : (
         <>
-          {/* Cards de resumo */}
-          <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4">
-            <div className="card p-4">
-              <p className="text-xs text-stone-400 mb-1">Orçamento total</p>
-              <p className="text-lg font-semibold text-stone-900 leading-tight">
+          {/* Stats em grid */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="card p-4 animate-pop-in stagger-1">
+              <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center mb-2">
+                <DollarSign size={15} className="text-stone-500" />
+              </div>
+              <p className="text-xs text-stone-400 mb-0.5">Orçamento</p>
+              <p className="text-base font-bold text-stone-900 leading-tight tabular-nums">
                 {fmt(stats.totalBudget)}
               </p>
             </div>
-            <div className="card p-4">
-              <p className="text-xs text-stone-400 mb-1">Total gasto</p>
-              <p className="text-lg font-semibold text-stone-900 leading-tight">
+
+            <div className="card p-4 animate-pop-in stagger-2">
+              <div className="w-8 h-8 rounded-xl bg-ember-50 flex items-center justify-center mb-2">
+                <Wallet size={15} className="text-ember-600" />
+              </div>
+              <p className="text-xs text-stone-400 mb-0.5">Gasto</p>
+              <p className="text-base font-bold text-stone-900 leading-tight tabular-nums">
                 {fmt(stats.totalSpent)}
               </p>
             </div>
-            <div className={`card p-4 ${overBudgetAll ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50'}`}>
-              <p className="text-xs text-stone-400 mb-1">Diferença</p>
-              <p className={`text-lg font-semibold leading-tight flex items-center gap-1 ${overBudgetAll ? 'text-red-600' : 'text-emerald-700'}`}>
-                {overBudgetAll
-                  ? <TrendingUp size={15} />
-                  : <TrendingDown size={15} />
+
+            <div className={`card p-4 animate-pop-in stagger-3 ${over ? 'border-red-200' : 'border-emerald-200'}`}>
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 ${over ? 'bg-red-50' : 'bg-emerald-50'}`}>
+                {over
+                  ? <TrendingUp size={15} className="text-red-500" />
+                  : <TrendingDown size={15} className="text-emerald-600" />
                 }
-                {overBudgetAll ? '+' : ''}{fmt(diff)}
-              </p>
-            </div>
-            <div className="card p-4">
-              <p className="text-xs text-stone-400 mb-1">Estourou orçamento</p>
-              <p className="text-lg font-semibold text-stone-900 leading-tight">
-                {stats.overBudget}
-                <span className="text-xs text-stone-400 ml-1">dates</span>
+              </div>
+              <p className="text-xs text-stone-400 mb-0.5">Saldo</p>
+              <p className={`text-base font-bold leading-tight tabular-nums ${over ? 'text-red-600' : 'text-emerald-700'}`}>
+                {over ? '+' : ''}{fmt(diff)}
               </p>
             </div>
           </div>
 
-          {/* Barra de progresso orçamento x gasto */}
+          {/* Barra de aproveitamento */}
           {stats.totalBudget > 0 && (
-            <div className="card px-4 py-3 mb-6">
-              <div className="flex items-center justify-between mb-2 text-xs text-stone-500">
-                <span>Aproveitamento do orçamento</span>
-                <span>{Math.min(Math.round((stats.totalSpent / stats.totalBudget) * 100), 999)}%</span>
+            <div className="card px-5 py-4 mb-6 animate-slide-up">
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-xs font-semibold text-stone-600">Aproveitamento do orçamento</p>
+                <span className={`text-xs font-bold tabular-nums ${over ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {Math.round((stats.totalSpent / stats.totalBudget) * 100)}%
+                </span>
               </div>
-              <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-2 rounded-full transition-all ${overBudgetAll ? 'bg-red-400' : 'bg-emerald-500'}`}
-                  style={{ width: `${Math.min((stats.totalSpent / stats.totalBudget) * 100, 100)}%` }}
+                  className={`h-2.5 rounded-full animate-bar-grow ${over ? 'bg-red-400' : 'bg-emerald-500'}`}
+                  style={{ width: `${pct}%` }}
                 />
               </div>
               <div className="flex justify-between mt-1.5 text-xs text-stone-400">
@@ -105,26 +109,25 @@ export default function FinancePage() {
             </div>
           )}
 
-          {/* Lista de dates */}
-          <h2 className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">
-            Por date
-          </h2>
+          {/* Lista */}
+          <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Por date</p>
           <div className="space-y-2">
-            {withFinance.map(d => {
-              const over = d.budget != null && d.actualCost != null && d.actualCost > d.budget
-              const hasBoth = d.budget != null && d.actualCost != null
+            {withFinance.map((d, i) => {
+              const isOver   = d.budget != null && d.actualCost != null && d.actualCost > d.budget
+              const hasBoth  = d.budget != null && d.actualCost != null
+              const itemPct  = hasBoth ? Math.min((d.actualCost! / d.budget!) * 100, 100) : 0
 
               return (
                 <button
                   key={d.id}
                   onClick={() => navigate(`/dates/${d.id}`)}
-                  className="card w-full text-left px-4 py-3 hover:border-stone-300 transition-colors"
+                  className="card w-full text-left px-4 py-3.5 hover:border-stone-300 hover:shadow-md hover:shadow-stone-900/[.06] transition-all active:scale-[.99] animate-slide-up"
+                  style={{ animationDelay: `${i * 0.04}s` }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    {/* Título + meta */}
+                  <div className="flex items-start justify-between gap-3 mb-2.5">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-medium text-stone-900 truncate">{d.title}</p>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-semibold text-stone-900 truncate">{d.title}</p>
                         {d.status === 'done' && d.rating != null && (
                           <span className="flex items-center gap-0.5 text-xs text-amber-500 shrink-0">
                             <Star size={11} className="fill-amber-400 text-amber-400" />
@@ -135,43 +138,39 @@ export default function FinancePage() {
                       <p className="text-xs text-stone-400">{formatDate(d.date)} · {d.time}</p>
                     </div>
 
-                    {/* Valores */}
-                    <div className="text-right shrink-0">
-                      {d.actualCost != null && (
-                        <p className={`text-sm font-semibold ${over ? 'text-red-600' : 'text-stone-800'}`}>
-                          {fmt(d.actualCost)}
-                        </p>
-                      )}
-                      {d.budget != null && (
-                        <p className="text-xs text-stone-400">orç. {fmt(d.budget)}</p>
-                      )}
+                    <div className="text-right shrink-0 flex items-center gap-2">
+                      <div>
+                        {d.actualCost != null && (
+                          <p className={`text-sm font-bold tabular-nums ${isOver ? 'text-red-600' : 'text-stone-800'}`}>
+                            {fmt(d.actualCost)}
+                          </p>
+                        )}
+                        {d.budget != null && (
+                          <p className="text-xs text-stone-400 tabular-nums">orç. {fmt(d.budget)}</p>
+                        )}
+                      </div>
+                      <ArrowRight size={13} className="text-stone-300 shrink-0" />
                     </div>
-
-                    <ArrowRight size={13} className="text-stone-300 shrink-0 mt-0.5" />
                   </div>
 
-                  {/* Mini barra por date */}
                   {hasBoth && (
-                    <div className="mt-2.5">
-                      <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-1 rounded-full ${over ? 'bg-red-400' : 'bg-emerald-500'}`}
-                          style={{ width: `${Math.min((d.actualCost! / d.budget!) * 100, 100)}%` }}
-                        />
-                      </div>
+                    <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-1 rounded-full transition-all ${isOver ? 'bg-red-400' : 'bg-emerald-500'}`}
+                        style={{ width: `${itemPct}%` }}
+                      />
                     </div>
                   )}
 
-                  {/* Status badges inline */}
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-2">
                     {d.status === 'done'
-                      ? <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={11} />Realizado</span>
+                      ? <span className="inline-flex items-center gap-1 text-xs text-violet-600 font-medium"><CheckCircle2 size={11} />Realizado</span>
                       : d.status === 'cancelled'
                       ? <span className="inline-flex items-center gap-1 text-xs text-stone-400"><Circle size={11} />Cancelado</span>
                       : <span className="inline-flex items-center gap-1 text-xs text-stone-400"><DollarSign size={11} />Planejado</span>
                     }
-                    {over && (
-                      <span className="text-xs text-red-500 font-medium">
+                    {isOver && (
+                      <span className="text-xs text-red-500 font-semibold">
                         +{fmt(d.actualCost! - d.budget!)} acima
                       </span>
                     )}

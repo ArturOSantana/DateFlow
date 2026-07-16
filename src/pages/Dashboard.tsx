@@ -70,10 +70,10 @@ export default function Dashboard() {
     <div className="p-5 md:p-7 max-w-2xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-stone-900">
-          Olá, {firstName}
+        <h1 className="text-xl font-bold text-stone-900">
+          Olá, {firstName} 👋
         </h1>
-        <p className="text-sm text-stone-500 mt-0.5">
+        <p className="text-sm text-stone-500 mt-1">
           {now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
@@ -97,16 +97,18 @@ export default function Dashboard() {
       {/* Brasa banner */}
       <button
         onClick={() => navigate('/ideas/brasa')}
-        className="w-full mb-6 rounded-2xl border border-orange-200 bg-stone-900 p-4 flex items-center gap-4 hover:bg-stone-800 transition-colors text-left"
+        className="w-full mb-6 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 p-[1.5px] hover:from-orange-600 hover:to-red-600 transition-all group"
       >
-        <div className="w-11 h-11 rounded-xl bg-orange-500/20 border border-orange-400/30 flex items-center justify-center shrink-0">
-          <Flame size={22} className="text-orange-400" />
+        <div className="bg-stone-900 rounded-2xl p-4 flex items-center gap-4 text-left">
+          <div className="w-11 h-11 rounded-xl bg-orange-500/20 border border-orange-400/40 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <Flame size={22} className="text-orange-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-white leading-tight">Jogar Brasa 🔥</p>
+            <p className="text-xs text-orange-200/70 mt-0.5">3 atos · perguntas que importam · conexão real</p>
+          </div>
+          <ArrowRight size={16} className="text-orange-400 shrink-0 group-hover:translate-x-1 transition-transform" />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-white leading-tight">Jogar Brasa 🔥</p>
-          <p className="text-xs text-stone-400 mt-0.5">3 atos · perguntas que importam · conexão real</p>
-        </div>
-        <ArrowRight size={16} className="text-orange-400 shrink-0" />
       </button>
 
       {/* Next date */}

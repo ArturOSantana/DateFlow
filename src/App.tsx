@@ -35,13 +35,13 @@ function ProtectedLayout() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-stone-50">
       {/* Desktop sidebar */}
       <div className="hidden md:block w-56 shrink-0" />
       <Sidebar />
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pt-0 pb-20 md:pb-0 mt-12 md:mt-0 overflow-y-auto">
+      <main className="flex-1 min-w-0 pb-20 md:pb-0 mt-12 md:mt-0 overflow-y-auto">
         <Outlet />
       </main>
 

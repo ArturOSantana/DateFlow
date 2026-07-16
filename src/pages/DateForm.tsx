@@ -148,7 +148,7 @@ export default function DateForm() {
         <button onClick={() => navigate(-1)} className="btn-ghost p-2 -ml-2">
           <ArrowLeft size={16} />
         </button>
-        <h1 className="text-base font-semibold text-stone-900">
+        <h1 className="text-xl font-bold text-stone-900">
           {isEdit ? 'Editar Date' : 'Novo Date'}
         </h1>
       </div>
@@ -397,7 +397,7 @@ export default function DateForm() {
         </div>
 
         {error && (
-          <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+          <p className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2.5 rounded-xl">{error}</p>
         )}
 
         <div className="flex gap-2 pt-1">

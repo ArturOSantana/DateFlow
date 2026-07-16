@@ -63,16 +63,25 @@ export default function SharePage() {
 
   return (
     <div className="min-h-screen bg-stone-50 py-10 px-4">
-      <div className="max-w-sm mx-auto">
+      {/* Detalhe decorativo de fundo */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-ember-100 rounded-full opacity-30" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-rose-100 rounded-full opacity-20" />
+      </div>
+
+      <div className="max-w-sm mx-auto relative">
         {/* Brand */}
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <Heart size={16} className="text-ember-600 fill-ember-600" />
-          <span className="text-sm font-medium text-stone-500">DateFlow</span>
+          <div className="w-7 h-7 bg-ember-600 rounded-xl flex items-center justify-center shadow-sm shadow-ember-600/30">
+            <Heart size={13} className="text-white fill-white" />
+          </div>
+          <span className="text-sm font-bold text-stone-700 tracking-tight">DateFlow</span>
         </div>
 
-        <div className="card p-5">
+        <div className="card p-5 animate-pop-in">
+          {/* Título + status */}
           <div className="flex items-start justify-between gap-3 mb-4">
-            <h1 className="text-lg font-semibold text-stone-900 leading-tight">{date.title}</h1>
+            <h1 className="text-xl font-bold text-stone-900 leading-tight">{date.title}</h1>
             <StatusBadge status={date.status} />
           </div>
 
@@ -101,7 +110,7 @@ export default function SharePage() {
           </div>
 
           {date.description && (
-            <p className="text-sm text-stone-600 bg-stone-50 rounded-lg p-3 mb-4 whitespace-pre-wrap">
+            <p className="text-sm text-stone-600 bg-stone-50 rounded-xl p-3 mb-4 whitespace-pre-wrap border border-stone-100">
               {date.description}
             </p>
           )}
@@ -174,8 +183,8 @@ export default function SharePage() {
           </a>
         </div>
 
-        <p className="text-center text-xs text-stone-400 mt-6">
-          Planejado com DateFlow
+        <p className="text-center text-xs text-stone-400 mt-5">
+          Planejado com ♥ no DateFlow
         </p>
       </div>
     </div>

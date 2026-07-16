@@ -68,24 +68,24 @@ function NavContent({ onClose }: { onClose?: () => void }) {
         </button>
       </div>
 
-      <div className="px-3 py-3 border-t border-stone-200">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="px-3 py-3 border-t border-stone-100">
+        <div className="flex items-center gap-2.5 mb-2.5">
           {user?.photoURL
-            ? <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full" />
+            ? <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full ring-2 ring-stone-200" />
             : (
-              <div className="w-7 h-7 rounded-full bg-stone-200 flex items-center justify-center text-xs text-stone-600">
+              <div className="w-8 h-8 rounded-full bg-ember-100 flex items-center justify-center text-xs font-bold text-ember-700">
                 {user?.displayName?.[0]}
               </div>
             )
           }
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-stone-900 truncate">{user?.displayName}</p>
+            <p className="text-xs font-semibold text-stone-900 truncate">{user?.displayName}</p>
             <p className="text-xs text-stone-400 truncate">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={async () => { await logout(); onClose?.() }}
-          className="btn-ghost w-full text-stone-500 text-xs"
+          className="btn-ghost w-full text-stone-500 text-xs justify-center"
         >
           <LogOut size={13} />
           Sair
@@ -102,21 +102,22 @@ export default function Sidebar() {
   return (
     <>
       {/* ══ DESKTOP: sidebar fixo, só visível em md+ ══ */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 bg-stone-50 border-r border-stone-200 flex-col z-20">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 bg-white border-r border-stone-200 flex-col z-20">
         {/* Logo */}
-        <div className="px-4 py-5 border-b border-stone-200 shrink-0">
-          <div className="flex items-center gap-2">
-            <Heart size={18} className="text-ember-600 fill-ember-600" />
-            <span className="font-semibold text-stone-900 tracking-tight flex-1">DateFlow</span>
+        <div className="px-4 py-5 border-b border-stone-100 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-ember-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm shadow-ember-600/30">
+              <Heart size={14} className="text-white fill-white" />
+            </div>
+            <span className="font-bold text-stone-900 tracking-tight flex-1">DateFlow</span>
             <NotificationBell />
           </div>
-          <p className="text-xs text-stone-400 mt-0.5 ml-6">Planeje sem complicação</p>
         </div>
         <NavContent />
       </aside>
 
       {/* ══ MOBILE: topbar com botão hambúrguer ══ */}
-      <header className="fixed top-0 inset-x-0 h-12 bg-stone-50 border-b border-stone-200 flex items-center px-3 gap-2 z-30 md:hidden">
+      <header className="fixed top-0 inset-x-0 h-12 bg-white border-b border-stone-200 flex items-center px-3 gap-2 z-30 md:hidden">
         <button
           onClick={() => setOpen(true)}
           className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-stone-100 transition-colors"
@@ -124,8 +125,10 @@ export default function Sidebar() {
         >
           <Menu size={20} className="text-stone-700" />
         </button>
-        <Heart size={15} className="text-ember-600 fill-ember-600" />
-        <span className="font-semibold text-stone-900 text-sm tracking-tight flex-1">DateFlow</span>
+        <div className="w-6 h-6 bg-ember-600 rounded-lg flex items-center justify-center shrink-0">
+          <Heart size={12} className="text-white fill-white" />
+        </div>
+        <span className="font-bold text-stone-900 text-sm tracking-tight flex-1">DateFlow</span>
         <NotificationBell />
       </header>
 
@@ -150,10 +153,12 @@ export default function Sidebar() {
         ].join(' ')}
       >
         {/* Cabeçalho do drawer */}
-        <div className="flex items-center justify-between px-4 h-12 border-b border-stone-200 shrink-0">
-          <div className="flex items-center gap-2">
-            <Heart size={16} className="text-ember-600 fill-ember-600" />
-            <span className="font-semibold text-stone-900 text-sm tracking-tight">DateFlow</span>
+        <div className="flex items-center justify-between px-4 h-12 border-b border-stone-200 shrink-0 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 bg-ember-600 rounded-lg flex items-center justify-center shrink-0">
+              <Heart size={12} className="text-white fill-white" />
+            </div>
+            <span className="font-bold text-stone-900 text-sm tracking-tight">DateFlow</span>
           </div>
           <button
             onClick={close}

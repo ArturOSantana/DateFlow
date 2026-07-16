@@ -65,21 +65,24 @@ export default function DatesPage() {
     <div className="p-5 md:p-7">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-base font-semibold text-stone-900">Dates</h1>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setView('list')}
-            className={`p-2 rounded-lg transition-colors ${view === 'list' ? 'bg-stone-900 text-stone-50' : 'btn-ghost'}`}
-          >
-            <List size={15} />
-          </button>
-          <button
-            onClick={() => setView('calendar')}
-            className={`p-2 rounded-lg transition-colors ${view === 'calendar' ? 'bg-stone-900 text-stone-50' : 'btn-ghost'}`}
-          >
-            <CalendarDays size={15} />
-          </button>
-          <button onClick={() => navigate('/dates/new')} className="btn-primary ml-1">
+        <h1 className="text-xl font-bold text-stone-900">Dates</h1>
+        <div className="flex items-center gap-2">
+          {/* Toggle lista/calendário */}
+          <div className="flex items-center bg-stone-100 rounded-xl p-1 gap-0.5">
+            <button
+              onClick={() => setView('list')}
+              className={`p-1.5 rounded-lg transition-all ${view === 'list' ? 'bg-white shadow-sm text-ember-600' : 'text-stone-400 hover:text-stone-600'}`}
+            >
+              <List size={15} />
+            </button>
+            <button
+              onClick={() => setView('calendar')}
+              className={`p-1.5 rounded-lg transition-all ${view === 'calendar' ? 'bg-white shadow-sm text-ember-600' : 'text-stone-400 hover:text-stone-600'}`}
+            >
+              <CalendarDays size={15} />
+            </button>
+          </div>
+          <button onClick={() => navigate('/dates/new')} className="btn-primary">
             <Plus size={14} />
             Novo
           </button>
@@ -148,7 +151,7 @@ function DateGroup({
             {formatDateLabel(date)}
           </p>
           <div className="space-y-1.5">
-            {items.map(d => {
+            {items.map((d, idx) => {
               const isMine = d.userId === ownerId
               return (
                 <button
@@ -158,7 +161,8 @@ function DateGroup({
                       ? navigate(`/dates/${d.id}`)
                       : navigate(`/partner/view/${d.userId}`)
                   }
-                  className="card w-full text-left px-4 py-3 hover:border-stone-300 transition-colors flex items-center justify-between gap-3"
+                  className="card w-full text-left px-4 py-3 hover:border-stone-300 hover:shadow-md hover:shadow-stone-900/[.06] transition-all active:scale-[.99] flex items-center justify-between gap-3 animate-slide-up"
+                  style={{ animationDelay: `${idx * 0.04}s` }}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
@@ -321,20 +325,20 @@ function CalendarView({
               key={day.toISOString()}
               onClick={() => setSelectedDay(isSelected ? null : day)}
               className={`
-                aspect-square flex flex-col items-center justify-start pt-1.5 rounded-lg text-xs transition-colors relative
-                ${!isCurrentMonth ? 'opacity-30' : ''}
-                ${isToday ? 'font-semibold' : ''}
-                ${isSelected ? 'bg-stone-900 text-stone-50' : 'hover:bg-stone-100 text-stone-700'}
+                aspect-square flex flex-col items-center justify-start pt-1.5 rounded-xl text-xs transition-all active:scale-95 relative
+                ${!isCurrentMonth ? 'opacity-25' : ''}
+                ${isToday && !isSelected ? 'font-bold text-ember-600' : ''}
+                ${isSelected ? 'bg-ember-600 text-white shadow-sm shadow-ember-600/30' : 'hover:bg-stone-100 text-stone-700'}
               `}
             >
               <span>{format(day, 'd')}</span>
               {(hasMine || hasIncoming) && (
                 <span className="flex items-center gap-0.5 mt-0.5">
                   {hasMine && (
-                    <span className={`w-1 h-1 rounded-full ${isSelected ? 'bg-stone-50' : 'bg-ember-600'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white/80' : 'bg-ember-500'}`} />
                   )}
                   {hasIncoming && (
-                    <span className={`w-1 h-1 rounded-full ${isSelected ? 'bg-stone-300' : 'bg-rose-400'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white/60' : 'bg-rose-400'}`} />
                   )}
                 </span>
               )}

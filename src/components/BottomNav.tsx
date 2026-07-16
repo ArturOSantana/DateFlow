@@ -41,15 +41,15 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-stone-50 border-t border-stone-200 flex items-center z-20 md:hidden">
+    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 flex items-center z-20 md:hidden">
       {items.map(({ to, icon: Icon, label, badge }) => (
         <NavLink
           key={to}
           to={to}
           end={to === '/'}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center py-2 gap-0.5 text-xs font-medium transition-colors ${
-              isActive ? 'text-stone-900' : 'text-stone-400'
+            `flex-1 flex flex-col items-center py-2 gap-0.5 text-xs font-semibold transition-all ${
+              isActive ? 'text-ember-600' : 'text-stone-400'
             }`
           }
         >
