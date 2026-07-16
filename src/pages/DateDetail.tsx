@@ -688,7 +688,7 @@ export default function DateDetail() {
               {(date.partnerRating != null || date.partnerReview || date.partnerQuickAnswers) ? (
                 <div className="border-t border-stone-100 pt-4">
                   <p className="text-sm font-medium text-stone-700 mb-3">
-                    Avaliação d{withPartnerGender === 'f' ? 'ela' : 'ele'}{withPartnerName ? ` (${withPartnerName})` : ''}
+                    {withPartnerName ? `Avaliação de ${withPartnerName}` : `Avaliação d${withPartnerGender === 'f' ? 'ela' : 'ele'}`}
                   </p>
 
                   {/* Estrelas */}
@@ -727,7 +727,7 @@ export default function DateDetail() {
               ) : (
                 <div className="border-t border-stone-100 pt-4">
                   <p className="text-xs text-stone-400 italic">
-                    {withPartnerName ? `${withPartnerName} ainda não avaliou esse date.` : 'A parceira/parceiro ainda não avaliou.'}
+                    {withPartnerName ? `${withPartnerName} ainda não avaliou.` : 'Ainda sem avaliação do parceiro/a.'}
                   </p>
                 </div>
               )}

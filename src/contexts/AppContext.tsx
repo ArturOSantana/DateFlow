@@ -50,7 +50,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!user) return
     const all = await db.getMyPartnerships(user.uid, user.email ?? undefined)
     const active = all.find(p => p.status === 'accepted')
-    setPartnerGender(active?.partnerGender)
+    if (!active) { setPartnerGender(undefined); return }
+    // Usa o gênero que o próprio parceiro definiu no perfil dele
+    const partnerId = active.requesterId === user.uid ? active.recipientId : active.requesterId
+    if (!partnerId) { setPartnerGender(undefined); return }
+    const gender = await db.getUserGender(partnerId)
+    setPartnerGender(gender)
   }, [user])
 
   const refreshOwnerGender = useCallback(async () => {

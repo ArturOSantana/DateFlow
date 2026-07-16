@@ -140,46 +140,6 @@ function PrefsModal({
   )
 }
 
-// ─── Seletor de gênero ────────────────────────────────────────────────────────
-
-function GenderPicker({
-  value,
-  onChange,
-}: {
-  value: PartnerGender
-  onChange: (g: PartnerGender) => void
-}) {
-  return (
-    <div>
-      <p className="text-xs font-medium text-stone-500 mb-1.5">Gênero</p>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => onChange('f')}
-          className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
-            value === 'f'
-              ? 'bg-rose-50 border-rose-300 text-rose-700'
-              : 'border-stone-200 text-stone-500 hover:bg-stone-50'
-          }`}
-        >
-          Ela / Parceira
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange('m')}
-          className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
-            value === 'm'
-              ? 'bg-sky-50 border-sky-300 text-sky-700'
-              : 'border-stone-200 text-stone-500 hover:bg-stone-50'
-          }`}
-        >
-          Ele / Parceiro
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function PartnerPage() {
@@ -187,7 +147,6 @@ export default function PartnerPage() {
   const [partnerships, setPartnerships] = useState<Partnership[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteGender, setInviteGender] = useState<PartnerGender>('f')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -200,9 +159,6 @@ export default function PartnerPage() {
   // Vinculação em massa
   const [linking, setLinking] = useState<string | null>(null)
   const [linkedMsg, setLinkedMsg] = useState<string | null>(null)
-
-  // Edição de gênero de parceria existente
-  const [editingGender, setEditingGender] = useState<string | null>(null) // id da partnership
 
   async function load() {
     if (!user) return
@@ -237,12 +193,6 @@ export default function PartnerPage() {
     setLoadingPrefs(false)
   }
 
-  async function saveGender(partnershipId: string, gender: PartnerGender) {
-    await dbApi.updatePartnership(partnershipId, { partnerGender: gender })
-    setEditingGender(null)
-    await load()
-  }
-
   /** Envia convite */
   async function sendInvite() {
     if (!user) return
@@ -256,13 +206,12 @@ export default function PartnerPage() {
       return
     }
 
-    // Limite: só pode ter uma parceira/parceiro por vez (aceita ou convite pendente enviado)
+    // Limite: só pode ter um parceiro por vez (aceita ou convite pendente enviado)
     const hasActivePartner = partnerships.some(
       p => p.requesterId === user.uid && (p.status === 'accepted' || p.status === 'pending'),
     )
     if (hasActivePartner) {
-      const pg = getPronouns(partnerships.find(p => p.requesterId === user.uid)?.partnerGender)
-      setError(`Você já tem ${pg.article} ${pg.partner} ativa. Remova a parceria atual antes de convidar outra pessoa.`)
+      setError('Você já tem uma parceria ativa. Remova-a antes de convidar outra pessoa.')
       return
     }
 
@@ -275,7 +224,6 @@ export default function PartnerPage() {
       return
     }
 
-    const pg = getPronouns(inviteGender)
     setSending(true)
     setError(null)
     try {
@@ -289,10 +237,9 @@ export default function PartnerPage() {
         recipientName: '',
         recipientPhoto: null,
         status: 'pending',
-        partnerGender: inviteGender,
       })
       setInviteEmail('')
-      setSuccess(`Convite enviado! Quando ${pg.subject} abrir o app e clicar em "${pg.Partner}" na navegação, verá a solicitação para aceitar.`)
+      setSuccess('Convite enviado! Quando a pessoa abrir o app e acessar "Parceiro" na navegação, verá a solicitação.')
       await load()
     } catch (err) {
       console.error('[PartnerPage] sendInvite error:', err)
@@ -351,11 +298,10 @@ export default function PartnerPage() {
       {/* ── Enviar convite — oculto quando já há parceria ativa ── */}
       {!hasActivePartner && (
         <div className="card p-4 mb-5 space-y-3">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Convidar {getPronouns(inviteGender).partner}</p>
-          <GenderPicker value={inviteGender} onChange={setInviteGender} />
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Convidar alguém</p>
           <div>
             <p className="text-xs text-stone-400 mb-1.5">
-              Digite o e-mail {getPronouns(inviteGender).of} para dar acesso aos seus dates.
+              E-mail da pessoa para dar acesso aos seus dates.
             </p>
             <div className="flex gap-2">
               <input
@@ -425,27 +371,24 @@ export default function PartnerPage() {
         <div className="mb-5">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">Aguardando resposta</p>
           <div className="space-y-2">
-            {pendingSent.map(p => {
-              const pg = getPronouns(p.partnerGender)
-              return (
-                <div key={p.id} className="card p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
-                    <Clock size={16} className="text-stone-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-stone-700 truncate">{p.recipientEmail}</p>
-                    <p className="text-xs text-stone-400">Pendente · {pg.partner}</p>
-                  </div>
-                  <button
-                    onClick={() => removePartnership(p.id)}
-                    className="btn-ghost text-xs text-stone-400 hover:text-red-500 shrink-0"
-                    title="Cancelar convite"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+            {pendingSent.map(p => (
+              <div key={p.id} className="card p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+                  <Clock size={16} className="text-stone-400" />
                 </div>
-              )
-            })}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-stone-700 truncate">{p.recipientEmail}</p>
+                  <p className="text-xs text-stone-400">Aguardando resposta</p>
+                </div>
+                <button
+                  onClick={() => removePartnership(p.id)}
+                  className="btn-ghost text-xs text-stone-400 hover:text-red-500 shrink-0"
+                  title="Cancelar convite"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -461,8 +404,6 @@ export default function PartnerPage() {
               const partnerEmail = isMe ? p.recipientEmail : p.requesterEmail
               const partnerPhoto = isMe ? p.recipientPhoto : p.requesterPhoto
               const partnerId    = isMe ? p.recipientId    : p.requesterId
-              const pg = getPronouns(p.partnerGender)
-              const isEditingThis = editingGender === p.id
 
               return (
                 <div key={p.id} className="card p-4">
@@ -474,24 +415,10 @@ export default function PartnerPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-stone-900 truncate">{partnerName || partnerEmail}</p>
                       <p className="text-xs text-stone-500 truncate">{partnerEmail}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-                          <UserCheck size={11} />
-                          Acesso ativo
-                        </span>
-                        <span className="text-stone-300">·</span>
-                        {/* Tag de gênero clicável */}
-                        <button
-                          onClick={() => setEditingGender(isEditingThis ? null : p.id)}
-                          className={`text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
-                            p.partnerGender === 'm'
-                              ? 'bg-sky-50 border-sky-200 text-sky-700'
-                              : 'bg-rose-50 border-rose-200 text-rose-700'
-                          }`}
-                        >
-                          {pg.partner}
-                        </button>
-                      </div>
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 mt-0.5">
+                        <UserCheck size={11} />
+                        Acesso ativo
+                      </span>
                     </div>
                     <button
                       onClick={() => removePartnership(p.id)}
@@ -502,17 +429,6 @@ export default function PartnerPage() {
                     </button>
                   </div>
 
-                  {/* Inline: editar gênero */}
-                  {isEditingThis && (
-                    <div className="mt-3 pt-3 border-t border-stone-100">
-                      <GenderPicker
-                        value={p.partnerGender ?? 'f'}
-                        onChange={g => saveGender(p.id, g)}
-                      />
-                      <p className="text-xs text-stone-400 mt-1.5">Toque para alterar e salvar.</p>
-                    </div>
-                  )}
-
                   {/* Ações do card */}
                   {partnerId && (
                     <div className="space-y-2 mt-3 pt-3 border-t border-stone-100">
@@ -522,14 +438,14 @@ export default function PartnerPage() {
                           className="btn-secondary text-xs flex-1 justify-center"
                         >
                           <ChevronDown size={13} />
-                          {pg.viewDates}
+                          Ver dates
                         </a>
                         <button
                           onClick={() => openPrefs(partnerName || partnerEmail, partnerId, p.partnerGender)}
                           className="btn-secondary text-xs flex-1 justify-center"
                         >
                           <Heart size={13} className="text-rose-400" />
-                          Ver preferências
+                          Preferências
                         </button>
                       </div>
                       <button
@@ -537,7 +453,7 @@ export default function PartnerPage() {
                         disabled={linking === partnerId}
                         className="btn-secondary text-xs w-full justify-center text-violet-700 border-violet-200 hover:bg-violet-50"
                       >
-                        {linking === partnerId ? 'Vinculando…' : pg.shareAllDates}
+                        {linking === partnerId ? 'Vinculando…' : `Vincular todos os meus dates a ${partnerName || partnerEmail}`}
                       </button>
                       {linkedMsg && <p className="text-xs text-emerald-600 text-center">{linkedMsg}</p>}
                     </div>

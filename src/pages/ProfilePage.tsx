@@ -164,7 +164,7 @@ export default function ProfilePage() {
       <div className="card p-4 mb-4">
         <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Meu gênero</p>
         <p className="text-xs text-stone-400 mb-3">
-          Define como {pg.subject} vai te ver: "ele planejou" ou "ela planejou".
+          Seu parceiro/a vai ver os pronomes corretos ao se referir a você.
         </p>
         <div className="flex gap-2">
           <button
@@ -206,7 +206,7 @@ export default function ProfilePage() {
             <div className="flex-1">
               <p className="text-sm font-semibold text-rose-800">Conte suas preferências</p>
               <p className="text-xs text-rose-600 mt-0.5 leading-relaxed">
-                Adicione o que você gosta, onde quer ir e o que come — {pg.subject} usará isso para planejar os dates perfeitos para você.
+                Adicione o que você gosta, onde quer ir e o que come — {pg.subject} vai ver isso ao planejar os dates.
               </p>
               <p className="text-xs font-medium text-rose-500 mt-2">Toque para preencher →</p>
             </div>
@@ -240,8 +240,8 @@ export default function ProfilePage() {
           {!prefsOpen && (
             <p className="px-4 pb-3.5 text-xs text-stone-400 -mt-1">
               {hasAnyPref
-                ? `${pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} vê essas informações ao planejar os dates.`
-                : `Toque para preencher — ${pg.subject} vai adorar saber o que você gosta.`}
+                ? `${pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} vê isso ao planejar os dates.`
+                : 'Toque para preencher.'}
             </p>
           )}
 
@@ -249,7 +249,7 @@ export default function ProfilePage() {
           {prefsOpen && (
             <div className="border-t border-stone-100 px-4 pt-4 pb-4 space-y-4">
               <p className="text-xs text-stone-400">
-                {pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} verá essas informações ao planejar os dates com você.
+                {pg.subject.charAt(0).toUpperCase() + pg.subject.slice(1)} vê isso ao planejar os dates.
               </p>
 
               {/* Atividades */}
@@ -324,7 +324,7 @@ export default function ProfilePage() {
                 <textarea
                   className="textarea text-sm"
                   rows={3}
-                  placeholder={`Qualquer outra coisa que ${pg.subject} deva saber sobre você…`}
+                  placeholder={`Mais alguma coisa que ${pg.subject} deva saber…`}
                   value={prefs.otherNotes}
                   onChange={e => setField('otherNotes', e.target.value)}
                 />

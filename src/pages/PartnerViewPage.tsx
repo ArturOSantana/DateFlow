@@ -348,7 +348,7 @@ export default function PartnerViewPage() {
               {senderName} quer te planejar um date
             </p>
             <p className="text-xs text-stone-500">
-              Você recebeu um convite de parceria. Aceite para ver os dates {op.plannedBy}.
+              Aceite para ver os dates {op.plannedBy}.
             </p>
           </div>
 
@@ -453,12 +453,12 @@ export default function PartnerViewPage() {
     <div className="p-5 md:p-7 max-w-xl">
       <div className="flex items-center gap-2 mb-1">
         {ownerName
-          ? <><User size={15} className="text-stone-400 shrink-0" /><h1 className="text-base font-semibold text-stone-900">{op.datesOf} — {ownerName}</h1></>
+          ? <><User size={15} className="text-stone-400 shrink-0" /><h1 className="text-base font-semibold text-stone-900">Dates de {ownerName}</h1></>
           : <h1 className="text-base font-semibold text-stone-900">Dates compartilhados</h1>
         }
       </div>
       <p className="text-sm text-stone-500 mb-6">
-        Você pode ver os detalhes e adicionar observações em cada date {op.plannedBy}.
+        Dates {op.plannedBy}. Você pode ver os detalhes e deixar observações.
       </p>
 
       {/* Card de preferências do dono */}
