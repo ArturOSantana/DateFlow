@@ -17,11 +17,11 @@ service cloud.firestore {
       allow read: if request.auth != null
                   && resource.data.withPartnerId == request.auth.uid;
 
-      // Pessoa vinculada: só pode gravar o campo partnerNote (e updatedAt)
+      // Pessoa vinculada: só pode gravar partnerNote, partnerDecision, partnerDecisionReason e updatedAt
       allow update: if request.auth != null
                     && resource.data.withPartnerId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                                        .hasOnly(['partnerNote', 'updatedAt']);
+                                        .hasOnly(['partnerNote', 'partnerDecision', 'partnerDecisionReason', 'updatedAt']);
     }
 
     // ── partnerships ─────────────────────────────────────────────────────────

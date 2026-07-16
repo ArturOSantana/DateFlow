@@ -4,7 +4,7 @@ import {
   ArrowLeft, Edit2, Trash2, CheckCircle2, Circle, Share2, CalendarPlus,
   MapPin, Clock, Calendar, Copy, Check, Ban, RotateCcw, Heart, MessageCircle,
   DollarSign, Star, TrendingUp, TrendingDown, Plus, Navigation,
-  Eye, EyeOff, Trash, User, Lightbulb, X,
+  Eye, EyeOff, Trash, User, Lightbulb, X, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -253,9 +253,30 @@ export default function DateDetail() {
       {/* Meta */}
       <div className="card divide-y divide-stone-100 mb-5">
         {withPartnerName && (
-          <div className="flex items-center gap-3 px-4 py-3">
-            <User size={15} className="text-stone-400 shrink-0" />
-            <span className="text-sm text-stone-700">Com {withPartnerName}</span>
+          <div className="flex items-center justify-between px-4 py-3 gap-3">
+            <span className="flex items-center gap-3">
+              <User size={15} className="text-stone-400 shrink-0" />
+              <span className="text-sm text-stone-700">Com {withPartnerName}</span>
+            </span>
+            {/* Resposta dela */}
+            {date.partnerDecision === 'accepted' && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                <ThumbsUp size={11} /> Aceitou
+              </span>
+            )}
+            {date.partnerDecision === 'declined' && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full shrink-0">
+                <ThumbsDown size={11} /> Recusou
+              </span>
+            )}
+          </div>
+        )}
+        {date.partnerDecision === 'declined' && date.partnerDecisionReason && (
+          <div className="px-4 py-2.5 border-t border-stone-100">
+            <p className="text-xs text-stone-400 mb-0.5 flex items-center gap-1">
+              <MessageCircle size={11} /> Motivo dela:
+            </p>
+            <p className="text-sm text-stone-600 italic">"{date.partnerDecisionReason}"</p>
           </div>
         )}
         <div className="flex items-center gap-3 px-4 py-3">
@@ -380,10 +401,10 @@ export default function DateDetail() {
                   ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-stone-100 text-stone-500'
               }`}
-              title={date.shareFinance ? 'Parceiro vê os gastos' : 'Gastos privados'}
+              title={date.shareFinance ? 'Ela vê os gastos' : 'Gastos privados'}
             >
               {date.shareFinance
-                ? <><Eye size={12} /> Visível para o parceiro</>
+                ? <><Eye size={12} /> Visível para ela</>
                 : <><EyeOff size={12} /> Só você vê</>
               }
             </button>
@@ -624,7 +645,7 @@ export default function DateDetail() {
       {/* ── Modal: Compartilhar ── */}
       <Modal open={shareOpen} onClose={() => setShareOpen(false)} title="Compartilhar date">
         <p className="text-xs text-stone-500 mb-3">
-          Envie o link abaixo para o seu parceiro ver os detalhes do date.
+          Envie o link abaixo para ela ver os detalhes do date.
         </p>
         <div className="flex gap-2 mb-3">
           <input
@@ -654,7 +675,7 @@ export default function DateDetail() {
           </div>
           <div>
             <p className="text-sm font-medium text-stone-800">
-              {date.shareFinance ? 'Parceiro vê os gastos' : 'Gastos privados'}
+              {date.shareFinance ? 'Ela vê os gastos' : 'Gastos privados'}
             </p>
             <p className="text-xs text-stone-500 mt-0.5">
               {date.shareFinance

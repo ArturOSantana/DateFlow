@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import {
   Calendar, Clock, MapPin, CheckCircle2, Circle,
   CalendarPlus, Star, MessageSquare, ChevronDown, ChevronUp, User,
-  Heart, Utensils, Check, Sparkles, Lightbulb, EyeOff,
+  Heart, Utensils, Sparkles, Lightbulb, EyeOff, X, ThumbsDown, ThumbsUp,
 } from 'lucide-react'
 import * as dbApi from '../lib/db'
 import { useAuth } from '../contexts/AuthContext'
@@ -136,6 +136,10 @@ export default function PartnerViewPage() {
   const [pendingPartnership, setPendingPartnership] = useState<Partnership | null>(null)
   const [acceptingInvite, setAcceptingInvite] = useState(false)
   const [inviteAccepted, setInviteAccepted] = useState(false)
+  const [inviteRejected, setInviteRejected] = useState(false)
+  const [rejectingInvite, setRejectingInvite] = useState(false)
+  const [showRejectForm, setShowRejectForm] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
   const [quotes] = useState(() => getRandomQuotes(3))
 
   // Preferências do dono
@@ -198,12 +202,38 @@ export default function PartnerViewPage() {
     setAcceptingInvite(false)
     setInviteAccepted(true)
 
-    // Recarrega dados agora com parceria aceita
     const updated = await dbApi.getPartnership(user.uid, partnerId!)
     if (updated) {
       setPendingPartnership(null)
       await loadData(updated)
     }
+  }
+
+  async function rejectInvite() {
+    if (!user || !pendingPartnership) return
+    setRejectingInvite(true)
+    await dbApi.updatePartnership(pendingPartnership.id, {
+      status: 'rejected',
+      recipientId: user.uid,
+      recipientName: user.displayName ?? 'Usuária',
+      recipientPhoto: user.photoURL ?? null,
+      rejectionReason: rejectReason.trim() || undefined,
+    })
+    setRejectingInvite(false)
+    setInviteRejected(true)
+  }
+
+  async function decideDate(dateId: string, decision: 'accepted' | 'declined', reason?: string) {
+    await dbApi.updateDate(dateId, {
+      partnerDecision: decision,
+      partnerDecisionReason: reason || undefined,
+    })
+    // Atualiza localmente para refletir sem re-fetch completo
+    setDates(prev => prev.map(d =>
+      d.id === dateId
+        ? { ...d, partnerDecision: decision, partnerDecisionReason: reason }
+        : d
+    ))
   }
 
   async function saveNote(dateId: string) {
@@ -223,53 +253,121 @@ export default function PartnerViewPage() {
     )
   }
 
-  // ── Convite pendente: mostrar frases e botão de aceitar ──────────────────
+  // ── Convite pendente ──────────────────────────────────────────────────────
   if (pendingPartnership && !inviteAccepted) {
     const senderName = pendingPartnership.requesterName || pendingPartnership.requesterEmail
+
+    // Tela de recusa confirmada
+    if (inviteRejected) {
+      return (
+        <div className="p-5 md:p-7 max-w-lg">
+          <div className="card p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-3">
+              <X size={20} className="text-stone-400" />
+            </div>
+            <p className="text-sm font-semibold text-stone-700 mb-1">Convite recusado</p>
+            <p className="text-xs text-stone-400">
+              {rejectReason.trim()
+                ? `Sua mensagem foi registrada para ${senderName}.`
+                : `${senderName} foi notificado da sua decisão.`}
+            </p>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="p-5 md:p-7 max-w-lg">
         {/* Cabeçalho */}
-        <div className="card p-5 mb-5 text-center">
-          {pendingPartnership.requesterPhoto ? (
-            <img
-              src={pendingPartnership.requesterPhoto}
-              alt=""
-              className="w-14 h-14 rounded-full mx-auto mb-3"
-            />
-          ) : (
-            <div className="w-14 h-14 rounded-full bg-stone-200 flex items-center justify-center mx-auto mb-3">
-              <User size={22} className="text-stone-500" />
+        <div className="card p-5 mb-5">
+          <div className="text-center mb-4">
+            {pendingPartnership.requesterPhoto ? (
+              <img src={pendingPartnership.requesterPhoto} alt="" className="w-14 h-14 rounded-full mx-auto mb-3" />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-stone-200 flex items-center justify-center mx-auto mb-3">
+                <User size={22} className="text-stone-500" />
+              </div>
+            )}
+            <p className="text-sm font-semibold text-stone-900 mb-1">
+              {senderName} quer te planejar um date
+            </p>
+            <p className="text-xs text-stone-500">
+              Você recebeu um convite de parceria. Aceite para ver os dates planejados para você.
+            </p>
+          </div>
+
+          {/* Botões aceitar / recusar */}
+          {!showRejectForm && (
+            <div className="flex gap-2">
+              <button
+                onClick={acceptInvite}
+                disabled={acceptingInvite}
+                className="btn-primary flex-1 justify-center"
+              >
+                <ThumbsUp size={14} />
+                {acceptingInvite ? 'Aceitando…' : 'Aceitar'}
+              </button>
+              <button
+                onClick={() => setShowRejectForm(true)}
+                className="btn-secondary flex-1 justify-center text-stone-600"
+              >
+                <ThumbsDown size={14} />
+                Recusar
+              </button>
             </div>
           )}
-          <p className="text-sm font-semibold text-stone-900 mb-1">
-            {senderName} quer te planejar um date ✨
-          </p>
-          <p className="text-xs text-stone-500 mb-4">
-            Você recebeu um convite de parceria. Aceite para ver os dates planejados para você.
-          </p>
-          <button
-            onClick={acceptInvite}
-            disabled={acceptingInvite}
-            className="btn-primary w-full justify-center"
-          >
-            <Check size={15} />
-            {acceptingInvite ? 'Aceitando…' : 'Aceitar convite'}
-          </button>
+
+          {/* Form de recusa */}
+          {showRejectForm && (
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-medium text-stone-700 mb-1.5">
+                  Por que você está recusando? <span className="text-stone-400 font-normal">(opcional)</span>
+                </p>
+                <textarea
+                  className="textarea text-sm"
+                  rows={3}
+                  placeholder="Ex: Não estou pronta para isso agora…"
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowRejectForm(false)}
+                  className="btn-ghost flex-1 justify-center text-xs"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={rejectInvite}
+                  disabled={rejectingInvite}
+                  className="btn-secondary flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <ThumbsDown size={13} />
+                  {rejectingInvite ? 'Enviando…' : 'Confirmar recusa'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Frases motivacionais */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={13} className="text-amber-400" />
-            <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Uma pitada de inspiração</p>
-          </div>
-          {quotes.map((q, i) => (
-            <div key={i} className="card p-4 border-l-2 border-rose-200">
-              <p className="text-sm text-stone-700 italic mb-1.5">"{q.text}"</p>
-              <p className="text-xs text-stone-400 text-right">— {q.author}</p>
+        {/* Frases motivacionais — só quando não está no form de recusa */}
+        {!showRejectForm && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={13} className="text-amber-400" />
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Uma pitada de inspiração</p>
             </div>
-          ))}
-        </div>
+            {quotes.map((q, i) => (
+              <div key={i} className="card p-4 border-l-2 border-rose-200">
+                <p className="text-sm text-stone-700 italic mb-1.5">"{q.text}"</p>
+                <p className="text-xs text-stone-400 text-right">— {q.author}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
@@ -324,7 +422,7 @@ export default function PartnerViewPage() {
                     <EyeOff size={13} className="text-violet-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-stone-800">Algo especial está sendo preparado para você ✨</p>
+                    <p className="text-sm font-medium text-stone-800">Algo especial está sendo preparado para você</p>
                     <p className="text-xs text-stone-400">{d.date ? `${d.date.split('-').reverse().join('/')}` : 'Data a confirmar'} {d.time ? `às ${d.time}` : ''}</p>
                   </div>
                 </div>
@@ -369,6 +467,7 @@ export default function PartnerViewPage() {
                 onSaveNote={() => saveNote(d.id)}
                 saving={!!savingNote[d.id]}
                 saved={!!savedNote[d.id]}
+                onDecide={(decision, reason) => decideDate(d.id, decision, reason)}
               />
             ))}
           </div>
@@ -391,6 +490,7 @@ export default function PartnerViewPage() {
                 onSaveNote={() => saveNote(d.id)}
                 saving={!!savingNote[d.id]}
                 saved={!!savedNote[d.id]}
+                onDecide={(decision, reason) => decideDate(d.id, decision, reason)}
               />
             ))}
           </div>
@@ -411,12 +511,25 @@ interface DateCardProps {
   onSaveNote: () => void
   saving: boolean
   saved: boolean
+  onDecide: (decision: 'accepted' | 'declined', reason?: string) => Promise<void>
 }
 
-function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNote, saving, saved }: DateCardProps) {
+function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNote, saving, saved, onDecide }: DateCardProps) {
   const gcUrl = buildGoogleCalendarUrl(date.title, date.date, date.time, date.location, date.description)
   const doneTasks = date.checklist.filter(t => t.done).length
   const totalTasks = date.checklist.length
+
+  // Estado local para resposta ao date
+  const [showDeclineForm, setShowDeclineForm] = useState(false)
+  const [declineReason, setDeclineReason] = useState('')
+  const [deciding, setDeciding] = useState(false)
+
+  async function handleDecide(decision: 'accepted' | 'declined') {
+    setDeciding(true)
+    await onDecide(decision, decision === 'declined' ? declineReason.trim() : undefined)
+    setDeciding(false)
+    setShowDeclineForm(false)
+  }
 
   return (
     <div className="card overflow-hidden">
@@ -500,7 +613,7 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             </div>
           )}
 
-          {/* Gastos — só se o parceiro permitiu */}
+          {/* Gastos — só se ele permitiu */}
           {date.shareFinance && date.actualCost != null && (
             <div>
               <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">Financeiro</p>
@@ -545,6 +658,102 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             <CalendarPlus size={13} />
             Salvar no Google Calendar
           </a>
+
+          {/* ── Resposta ao date (aceitar/recusar) — só quando waiting_reply ── */}
+          {date.status === 'waiting_reply' && (
+            <div className="border-t border-stone-100 pt-3">
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">
+                Sua resposta
+              </p>
+
+              {/* Já respondeu */}
+              {date.partnerDecision && !showDeclineForm && (
+                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 mb-2 ${
+                  date.partnerDecision === 'accepted'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-red-50 text-red-700'
+                }`}>
+                  {date.partnerDecision === 'accepted'
+                    ? <ThumbsUp size={13} className="shrink-0" />
+                    : <ThumbsDown size={13} className="shrink-0" />
+                  }
+                  <span className="text-xs font-medium">
+                    {date.partnerDecision === 'accepted' ? 'Você aceitou esse date' : 'Você recusou esse date'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (date.partnerDecision === 'declined') setShowDeclineForm(true)
+                      else handleDecide('declined')
+                    }}
+                    className="ml-auto text-xs underline opacity-60 hover:opacity-100"
+                  >
+                    Mudar
+                  </button>
+                </div>
+              )}
+              {date.partnerDecision === 'declined' && date.partnerDecisionReason && !showDeclineForm && (
+                <p className="text-xs text-stone-500 italic mb-2">"{date.partnerDecisionReason}"</p>
+              )}
+
+              {/* Ainda não respondeu ou mudando */}
+              {(!date.partnerDecision || showDeclineForm) && (
+                <div className="space-y-2">
+                  {!showDeclineForm && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDecide('accepted')}
+                        disabled={deciding}
+                        className="btn-secondary flex-1 justify-center text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                      >
+                        <ThumbsUp size={13} />
+                        Vou adorar!
+                      </button>
+                      <button
+                        onClick={() => setShowDeclineForm(true)}
+                        className="btn-secondary flex-1 justify-center text-xs text-stone-600"
+                      >
+                        <ThumbsDown size={13} />
+                        Não quero ir
+                      </button>
+                    </div>
+                  )}
+                  {showDeclineForm && (
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs font-medium text-stone-700 mb-1">
+                          Por que não quer ir? <span className="text-stone-400 font-normal">(opcional)</span>
+                        </p>
+                        <textarea
+                          className="textarea text-sm"
+                          rows={2}
+                          placeholder="Ex: Não gosto desse tipo de lugar…"
+                          value={declineReason}
+                          onChange={e => setDeclineReason(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowDeclineForm(false)}
+                          className="btn-ghost flex-1 justify-center text-xs"
+                        >
+                          Voltar
+                        </button>
+                        <button
+                          onClick={() => handleDecide('declined')}
+                          disabled={deciding}
+                          className="btn-secondary flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <ThumbsDown size={13} />
+                          {deciding ? 'Salvando…' : 'Confirmar recusa'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Campo de observação da parceira ── */}
           <div className="border-t border-stone-100 pt-3">

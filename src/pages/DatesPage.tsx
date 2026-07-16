@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, CalendarDays, List, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, CalendarDays, List, Search, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { formatDateLabel } from '../lib/utils'
 import StatusBadge from '../components/StatusBadge'
@@ -136,7 +136,14 @@ function ListView({ dates }: { dates: ReturnType<typeof useApp>['dates'] }) {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-stone-900 truncate">{d.title}</p>
-                  <p className="text-xs text-stone-400 mt-0.5">{d.time}{d.location ? ` · ${d.location}` : ''}</p>
+                  <p className="text-xs text-stone-400 mt-0.5">
+                    {d.time}{d.location ? ` · ${d.location}` : ''}
+                    {d.withPartnerId && (
+                      <span className="inline-flex items-center gap-0.5 ml-1.5 text-rose-400">
+                        <Heart size={10} className="fill-rose-400" />
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <StatusBadge status={d.status} />
               </button>

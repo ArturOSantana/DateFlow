@@ -202,6 +202,15 @@ export default function PartnerPage() {
       return
     }
 
+    // Limite: só pode ter uma parceira por vez (aceita ou convite pendente enviado)
+    const hasActivePartner = partnerships.some(
+      p => p.requesterId === user.uid && (p.status === 'accepted' || p.status === 'pending'),
+    )
+    if (hasActivePartner) {
+      setError('Você já tem uma parceira ativa. Remova a parceria atual antes de convidar outra pessoa.')
+      return
+    }
+
     const alreadyExists = partnerships.some(
       p => p.requesterEmail === user.email?.toLowerCase()
         && p.recipientEmail === email,

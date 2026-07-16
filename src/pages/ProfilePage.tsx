@@ -161,7 +161,7 @@ export default function ProfilePage() {
             <div className="flex-1">
               <p className="text-sm font-semibold text-rose-800">Conte suas preferências</p>
               <p className="text-xs text-rose-600 mt-0.5 leading-relaxed">
-                Adicione o que você gosta, onde quer ir e o que come — seu parceiro usará isso para planejar os dates perfeitos para você.
+                Adicione o que você gosta, onde quer ir e o que come — ele usará isso para planejar os dates perfeitos para você.
               </p>
               <p className="text-xs font-medium text-rose-500 mt-2">Toque para preencher →</p>
             </div>
@@ -195,8 +195,8 @@ export default function ProfilePage() {
           {!prefsOpen && (
             <p className="px-4 pb-3.5 text-xs text-stone-400 -mt-1">
               {hasAnyPref
-                ? 'Seu parceiro vê essas informações ao planejar os dates.'
-                : 'Toque para preencher — seu parceiro vai adorar saber o que você gosta.'}
+                ? 'Ele vê essas informações ao planejar os dates.'
+                : 'Toque para preencher — ele vai adorar saber o que você gosta.'}
             </p>
           )}
 
@@ -204,7 +204,7 @@ export default function ProfilePage() {
           {prefsOpen && (
             <div className="border-t border-stone-100 px-4 pt-4 pb-4 space-y-4">
               <p className="text-xs text-stone-400">
-                Seu parceiro verá essas informações ao planejar os dates com você.
+                Ele verá essas informações ao planejar os dates com você.
               </p>
 
               {/* Atividades */}

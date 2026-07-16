@@ -56,6 +56,10 @@ export interface DateEvent {
   hiddenFromPartner?: boolean
   /** Dicas sobre o date que o criador deixa para a parceira */
   partnerHints?: string[]
+  /** Resposta da parceira ao date: 'accepted' | 'declined' */
+  partnerDecision?: 'accepted' | 'declined'
+  /** Motivo/mensagem opcional da parceira sobre a decisão */
+  partnerDecisionReason?: string
   createdAt: number
   updatedAt: number
 }
@@ -80,6 +84,8 @@ export interface Partnership {
   recipientName: string
   recipientPhoto?: string | null
   status: PartnershipStatus
+  /** Motivo da recusa do convite de parceria (preenchido pela destinatária) */
+  rejectionReason?: string
   createdAt: number
   updatedAt: number
 }
