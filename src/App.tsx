@@ -11,6 +11,8 @@ import DatesPage from './pages/DatesPage'
 import DateForm from './pages/DateForm'
 import DateDetail from './pages/DateDetail'
 import IdeasPage from './pages/IdeasPage'
+import DrawPage from './pages/DrawPage'
+import ScratchPage from './pages/ScratchPage'
 import HistoryPage from './pages/HistoryPage'
 import FinancePage from './pages/FinancePage'
 import ProfilePage from './pages/ProfilePage'
@@ -63,6 +65,8 @@ export default function App() {
         <Route path="/dates/:id" element={<DateDetail />} />
         <Route path="/dates/:id/edit" element={<DateForm />} />
         <Route path="/ideas" element={<IdeasPage />} />
+        <Route path="/ideas/draw" element={<DrawPage />} />
+        <Route path="/ideas/scratch" element={<ScratchPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/profile" element={<ProfilePage />} />
