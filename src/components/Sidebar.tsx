@@ -7,6 +7,7 @@ import {
   Lightbulb,
   History,
   Wallet,
+  Users,
   User,
   LogOut,
   Heart,
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'     },
   { to: '/history', icon: History,         label: 'Histórico'  },
   { to: '/finance', icon: Wallet,          label: 'Finanças'   },
+  { to: '/partner', icon: Users,           label: 'Parceira'   },
   { to: '/profile', icon: User,            label: 'Perfil'     },
 ]
 

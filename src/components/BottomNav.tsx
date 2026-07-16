@@ -1,24 +1,43 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   CalendarDays,
   Lightbulb,
-  Wallet,
+  Users,
   User,
 } from 'lucide-react'
-
-const navItems = [
-  { to: '/',        icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/dates',   icon: CalendarDays,    label: 'Dates'     },
-  { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'    },
-  { to: '/finance', icon: Wallet,          label: 'Finanças'  },
-  { to: '/profile', icon: User,            label: 'Perfil'    },
-]
+import { useAuth } from '../contexts/AuthContext'
+import { getPendingInviteCount } from '../lib/db'
 
 export default function BottomNav() {
+  const { user } = useAuth()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    if (!user?.email) return
+    let cancelled = false
+    getPendingInviteCount(user.email).then(n => { if (!cancelled) setPendingCount(n) })
+    const interval = setInterval(() => {
+      getPendingInviteCount(user.email!).then(n => { if (!cancelled) setPendingCount(n) })
+    }, 60_000)
+    window.addEventListener('focus', () =>
+      getPendingInviteCount(user.email!).then(n => { if (!cancelled) setPendingCount(n) })
+    )
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [user])
+
+  const items = [
+    { to: '/',        icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/dates',   icon: CalendarDays,    label: 'Dates'     },
+    { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'    },
+    { to: '/partner', icon: Users,           label: 'Parceira', badge: pendingCount },
+    { to: '/profile', icon: User,            label: 'Perfil'    },
+  ]
+
   return (
     <nav className="fixed bottom-0 inset-x-0 bg-stone-50 border-t border-stone-200 flex items-center z-20 md:hidden">
-      {navItems.map(({ to, icon: Icon, label }) => (
+      {items.map(({ to, icon: Icon, label, badge }) => (
         <NavLink
           key={to}
           to={to}
@@ -29,7 +48,14 @@ export default function BottomNav() {
             }`
           }
         >
-          <Icon size={18} />
+          <span className="relative">
+            <Icon size={18} />
+            {badge != null && badge > 0 && (
+              <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center rounded-full px-[3px]">
+                {badge > 9 ? '9+' : badge}
+              </span>
+            )}
+          </span>
           {label}
         </NavLink>
       ))}

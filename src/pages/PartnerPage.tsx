@@ -16,7 +16,7 @@ export default function PartnerPage() {
   async function load() {
     if (!user) return
     setLoading(true)
-    const data = await dbApi.getMyPartnerships(user.uid)
+    const data = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
     setPartnerships(data)
     setLoading(false)
   }
@@ -64,7 +64,7 @@ export default function PartnerPage() {
         status: 'pending',
       })
       setInviteEmail('')
-      setSuccess('Convite enviado! Quando ela abrir o app, verá a solicitação em Perfil → Acesso compartilhado.')
+      setSuccess('Convite enviado! Quando ela abrir o app e clicar em "Parceira" na navegação, verá a solicitação para aceitar.')
       await load()
     } catch (err) {
       console.error('[PartnerPage] sendInvite error:', err)

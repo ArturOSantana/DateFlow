@@ -58,7 +58,7 @@ export default function DateDetail() {
   const [withPartnerName, setWithPartnerName] = useState<string | null>(null)
   useEffect(() => {
     if (!user || !date?.withPartnerId) { setWithPartnerName(null); return }
-    dbApi.getMyPartnerships(user.uid).then(all => {
+    dbApi.getMyPartnerships(user.uid, user.email ?? undefined).then(all => {
       const p = all.find(p =>
         p.requesterId === date.withPartnerId || p.recipientId === date.withPartnerId
       )

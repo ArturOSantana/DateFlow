@@ -116,16 +116,31 @@ export async function getPartnership(userAId: string, userBId: string): Promise<
 
 /**
  * Retorna todas as parcerias de um usuário (como requester ou recipient).
+ * Busca também pelo email para capturar convites pendentes onde
+ * recipientId ainda é '' (criado antes do destinatário aceitar).
  */
-export async function getMyPartnerships(userId: string): Promise<Partnership[]> {
-  const [snap1, snap2] = await Promise.all([
+export async function getMyPartnerships(userId: string, userEmail?: string): Promise<Partnership[]> {
+  const queries: Promise<import('firebase/firestore').QuerySnapshot>[] = [
     getDocs(query(collection(db, 'partnerships'), where('requesterId', '==', userId))),
     getDocs(query(collection(db, 'partnerships'), where('recipientId', '==', userId))),
-  ])
-  const all: Partnership[] = [
-    ...snap1.docs.map(d => ({ id: d.id, ...d.data() } as Partnership)),
-    ...snap2.docs.map(d => ({ id: d.id, ...d.data() } as Partnership)),
   ]
+  if (userEmail) {
+    queries.push(
+      getDocs(query(collection(db, 'partnerships'), where('recipientEmail', '==', userEmail.toLowerCase()))),
+    )
+  }
+  const snaps = await Promise.all(queries)
+  // Deduplica por id (pode aparecer nas queries de uid e email ao mesmo tempo)
+  const seen = new Set<string>()
+  const all: Partnership[] = []
+  for (const snap of snaps) {
+    for (const d of snap.docs) {
+      if (!seen.has(d.id)) {
+        seen.add(d.id)
+        all.push({ id: d.id, ...d.data() } as Partnership)
+      }
+    }
+  }
   return all
 }
 

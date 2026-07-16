@@ -32,7 +32,7 @@ export default function DateForm() {
   const [partnerships, setPartnerships] = useState<Partnership[]>([])
   useEffect(() => {
     if (!user) return
-    dbApi.getMyPartnerships(user.uid).then(all =>
+    dbApi.getMyPartnerships(user.uid, user.email ?? undefined).then(all =>
       setPartnerships(all.filter(p => p.status === 'accepted'))
     )
   }, [user])
@@ -220,13 +220,16 @@ export default function DateForm() {
           return !!uid
         }).length > 0 && (
           <div>
-            <label className="label">Esse date é com quem?</label>
+            <label className="label">Compartilhar com parceira</label>
+            <p className="text-xs text-stone-400 mb-1.5">
+              Ela só verá esse date se você marcar o nome dela aqui.
+            </p>
             <select
               className="input"
               value={form.withPartnerId ?? ''}
               onChange={e => set('withPartnerId', e.target.value || undefined)}
             >
-              <option value="">Não especificado</option>
+              <option value="">Não compartilhar (só você vê)</option>
               {partnerships
                 .map(p => {
                   const isMe = p.requesterId === user!.uid
