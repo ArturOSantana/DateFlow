@@ -278,6 +278,9 @@ export default function PartnerPage() {
   )
   const accepted = partnerships.filter(p => p.status === 'accepted')
 
+  // Bloqueia o formulário de convite quando já há parceria ativa (aceita ou pendente enviada)
+  const hasActivePartner = accepted.length > 0 || pendingSent.length > 0
+
   return (
     <div className="p-5 md:p-7 max-w-lg">
       <div className="flex items-center gap-2 mb-1">
@@ -288,33 +291,35 @@ export default function PartnerPage() {
         Pessoa com acesso podem ver seus dates e adicionar observações.
       </p>
 
-      {/* ── Enviar convite ── */}
-      <div className="card p-4 mb-5">
-        <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">Convidar pessoa</p>
-        <p className="text-sm text-stone-600 mb-3">
-          Digite o e-mail de quem vai receber acesso aos seus dates.
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="email"
-            className="input flex-1 text-sm"
-            placeholder="email@exemplo.com"
-            value={inviteEmail}
-            onChange={e => { setInviteEmail(e.target.value); setError(null); setSuccess(null) }}
-            onKeyDown={e => e.key === 'Enter' && sendInvite()}
-          />
-          <button
-            onClick={sendInvite}
-            disabled={sending}
-            className="btn-primary shrink-0"
-          >
-            <UserPlus size={14} />
-            {sending ? 'Enviando…' : 'Dar acesso'}
-          </button>
+      {/* ── Enviar convite — oculto quando já há parceira ativa ── */}
+      {!hasActivePartner && (
+        <div className="card p-4 mb-5">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">Convidar parceira</p>
+          <p className="text-sm text-stone-600 mb-3">
+            Digite o e-mail de quem vai receber acesso aos seus dates.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              className="input flex-1 text-sm"
+              placeholder="email@exemplo.com"
+              value={inviteEmail}
+              onChange={e => { setInviteEmail(e.target.value); setError(null); setSuccess(null) }}
+              onKeyDown={e => e.key === 'Enter' && sendInvite()}
+            />
+            <button
+              onClick={sendInvite}
+              disabled={sending}
+              className="btn-primary shrink-0"
+            >
+              <UserPlus size={14} />
+              {sending ? 'Enviando…' : 'Dar acesso'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+          {success && <p className="text-xs text-emerald-600 mt-2">{success}</p>}
         </div>
-        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-        {success && <p className="text-xs text-emerald-600 mt-2">{success}</p>}
-      </div>
+      )}
 
       {/* ── Convites recebidos ── */}
       {pendingReceived.length > 0 && (
