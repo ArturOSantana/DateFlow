@@ -129,23 +129,6 @@ export async function getMyPartnerships(userId: string): Promise<Partnership[]> 
   return all
 }
 
-/**
- * Busca parceria pelo email do recipient (para enviar convite).
- */
-export async function getPartnershipByEmail(requesterEmail: string, recipientEmail: string): Promise<Partnership | null> {
-  const q = query(
-    collection(db, 'partnerships'),
-    where('requesterEmail', '==', requesterEmail),
-    where('recipientEmail', '==', recipientEmail),
-  )
-  const snap = await getDocs(q)
-  if (!snap.empty) {
-    const d = snap.docs[0]
-    return { id: d.id, ...d.data() } as Partnership
-  }
-  return null
-}
-
 export async function createPartnership(data: Omit<Partnership, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const ref = await addDoc(collection(db, 'partnerships'), {
     ...data,

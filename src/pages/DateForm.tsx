@@ -214,8 +214,11 @@ export default function DateForm() {
           </div>
         </div>
 
-        {/* Com quem é esse date — só aparece se há parcerias ativas */}
-        {partnerships.length > 0 && (
+        {/* Com quem é esse date — só aparece se há parcerias aceitas com UID preenchido */}
+        {partnerships.filter(p => {
+          const uid = p.requesterId === user!.uid ? p.recipientId : p.requesterId
+          return !!uid
+        }).length > 0 && (
           <div>
             <label className="label">Esse date é com quem?</label>
             <select
@@ -224,17 +227,19 @@ export default function DateForm() {
               onChange={e => set('withPartnerId', e.target.value || undefined)}
             >
               <option value="">Não especificado</option>
-              {partnerships.map(p => {
-                const isMe = p.requesterId === user!.uid
-                const name  = isMe ? p.recipientName  : p.requesterName
-                const email = isMe ? p.recipientEmail : p.requesterEmail
-                const uid   = isMe ? p.recipientId    : p.requesterId
-                return (
-                  <option key={p.id} value={uid}>
-                    {name || email}
-                  </option>
-                )
-              })}
+              {partnerships
+                .map(p => {
+                  const isMe = p.requesterId === user!.uid
+                  const name  = isMe ? p.recipientName  : p.requesterName
+                  const email = isMe ? p.recipientEmail : p.requesterEmail
+                  const uid   = isMe ? p.recipientId    : p.requesterId
+                  return { uid, label: name || email }
+                })
+                .filter(({ uid }) => !!uid)
+                .map(({ uid, label }) => (
+                  <option key={uid} value={uid}>{label}</option>
+                ))
+              }
             </select>
           </div>
         )}

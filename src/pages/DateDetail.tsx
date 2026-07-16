@@ -1,12 +1,13 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Edit2, Trash2, CheckCircle2, Circle, Share2, CalendarPlus,
   MapPin, Clock, Calendar, Copy, Check, Ban, RotateCcw, Heart, MessageCircle,
   DollarSign, Star, TrendingUp, TrendingDown, Plus, Navigation,
-  Eye, EyeOff, Trash,
+  Eye, EyeOff, Trash, User,
 } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
 import { formatDate, buildGoogleCalendarUrl, generateId } from '../lib/utils'
 import StatusBadge from '../components/StatusBadge'
@@ -49,8 +50,25 @@ export default function DateDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { dates, refreshDates } = useApp()
+  const { user } = useAuth()
 
   const date = dates.find(d => d.id === id)
+
+  // Nome de quem é o date (withPartnerId resolvido)
+  const [withPartnerName, setWithPartnerName] = useState<string | null>(null)
+  useEffect(() => {
+    if (!user || !date?.withPartnerId) { setWithPartnerName(null); return }
+    dbApi.getMyPartnerships(user.uid).then(all => {
+      const p = all.find(p =>
+        p.requesterId === date.withPartnerId || p.recipientId === date.withPartnerId
+      )
+      if (!p) return
+      const isMe = p.requesterId === user.uid
+      const name  = isMe ? p.recipientName  : p.requesterName
+      const email = isMe ? p.recipientEmail : p.requesterEmail
+      setWithPartnerName(name || email || null)
+    })
+  }, [user, date?.withPartnerId])
 
   const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -205,6 +223,12 @@ export default function DateDetail() {
 
       {/* Meta */}
       <div className="card divide-y divide-stone-100 mb-5">
+        {withPartnerName && (
+          <div className="flex items-center gap-3 px-4 py-3">
+            <User size={15} className="text-stone-400 shrink-0" />
+            <span className="text-sm text-stone-700">Com {withPartnerName}</span>
+          </div>
+        )}
         <div className="flex items-center gap-3 px-4 py-3">
           <Calendar size={15} className="text-stone-400 shrink-0" />
           <span className="text-sm text-stone-700">{formatDate(date.date)}</span>

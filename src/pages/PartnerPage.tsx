@@ -39,9 +39,12 @@ export default function PartnerPage() {
       return
     }
 
-    // Verifica se já existe convite entre esses dois emails
-    const existing = await dbApi.getPartnershipByEmail(user.email!, email)
-    if (existing) {
+    // Verifica duplicata nos dados já carregados — sem query extra ao Firestore
+    const alreadyExists = partnerships.some(
+      p => p.requesterEmail === user.email?.toLowerCase()
+        && p.recipientEmail === email,
+    )
+    if (alreadyExists) {
       setError('Você já enviou um convite para esse e-mail.')
       return
     }
@@ -51,19 +54,20 @@ export default function PartnerPage() {
     try {
       await dbApi.createPartnership({
         requesterId: user.uid,
-        requesterEmail: user.email!,
+        requesterEmail: user.email!.toLowerCase(),
         requesterName: user.displayName ?? 'Usuário',
         requesterPhoto: user.photoURL ?? undefined,
-        recipientId: '',          // será preenchido quando ela aceitar
+        recipientId: '',
         recipientEmail: email,
         recipientName: '',
         recipientPhoto: undefined,
         status: 'pending',
       })
       setInviteEmail('')
-      setSuccess('Acesso concedido! Quando ela entrar no app com esse e-mail, verá a solicitação em Perfil → Acesso compartilhado.')
+      setSuccess('Convite enviado! Quando ela abrir o app, verá a solicitação em Perfil → Acesso compartilhado.')
       await load()
-    } catch {
+    } catch (err) {
+      console.error('[PartnerPage] sendInvite error:', err)
       setError('Erro ao enviar convite. Tente novamente.')
     } finally {
       setSending(false)
