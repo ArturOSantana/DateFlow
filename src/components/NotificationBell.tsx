@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getPendingInviteCount, getNotifications, markAllNotificationsRead } from '../lib/db'
 import type { AppNotification } from '../types'
-import { formatDate } from '../lib/utils'
 
 /**
  * Sino de notificações. Mostra badge com:
