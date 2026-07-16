@@ -196,6 +196,24 @@ export async function getPendingInviteCount(userEmail: string): Promise<number> 
   return snap.size
 }
 
+/**
+ * Vincula (ou desvincula) uma parceira em todos os dates do dono de uma vez.
+ * Atualiza withPartnerId nos dates que ainda não têm parceira vinculada.
+ */
+export async function linkPartnerToAllDates(ownerId: string, partnerUid: string): Promise<number> {
+  const q = query(
+    collection(db, 'dates'),
+    where('userId', '==', ownerId),
+  )
+  const snap = await getDocs(q)
+  // Atualiza apenas os que ainda não têm parceira vinculada (evita sobrescrever escolhas manuais)
+  const toUpdate = snap.docs.filter(d => !d.data().withPartnerId)
+  await Promise.all(
+    toUpdate.map(d => updateDoc(doc(db, 'dates', d.id), { withPartnerId: partnerUid, updatedAt: Date.now() }))
+  )
+  return toUpdate.length
+}
+
 // ─── User Preferences ─────────────────────────────────────────────────────────
 
 export async function getUserPreferences(userId: string): Promise<PreferenceCategory | null> {

@@ -1,8 +1,142 @@
 import { useEffect, useState } from 'react'
-import { Users, UserPlus, UserCheck, UserX, Trash2, User, Clock, Check } from 'lucide-react'
+import {
+  Users, UserPlus, UserCheck, UserX, Trash2, User, Clock, Check,
+  Heart, MapPin, Utensils, X, ChevronDown,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
-import type { Partnership } from '../types'
+import type { Partnership, PreferenceCategory } from '../types'
+
+// ─── Modal de preferências da parceira ───────────────────────────────────────
+
+function TagGroup({ items, color, label }: { items: string[]; color: string; label: string }) {
+  if (items.length === 0) return null
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-stone-500">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((item, i) => (
+          <span key={i} className={`text-xs px-2 py-0.5 rounded-full ${color}`}>{item}</span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PrefsModal({
+  name,
+  prefs,
+  loading,
+  onClose,
+}: {
+  name: string
+  prefs: PreferenceCategory | null
+  loading: boolean
+  onClose: () => void
+}) {
+  const hasContent = prefs && (
+    prefs.activitiesLoves.length > 0 ||
+    prefs.placesLoves.length > 0 ||
+    prefs.placesNever.length > 0 ||
+    prefs.placesTolerate.length > 0 ||
+    prefs.foodLoves.length > 0 ||
+    prefs.foodNever.length > 0 ||
+    prefs.foodTolerate.length > 0 ||
+    prefs.otherNotes.trim().length > 0
+  )
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white rounded-t-2xl">
+          <div className="flex items-center gap-2">
+            <Heart size={14} className="text-rose-400" />
+            <p className="text-sm font-semibold text-stone-900">Preferências de {name}</p>
+          </div>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600 p-1">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="px-5 py-4">
+          {loading && (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-stone-200 border-t-stone-600 rounded-full animate-spin" />
+            </div>
+          )}
+
+          {!loading && !hasContent && (
+            <div className="text-center py-8">
+              <Heart size={28} className="text-stone-200 mx-auto mb-2" />
+              <p className="text-sm text-stone-500">{name} ainda não preencheu as preferências.</p>
+              <p className="text-xs text-stone-400 mt-1">Quando ela preencher, você verá aqui.</p>
+            </div>
+          )}
+
+          {!loading && hasContent && prefs && (
+            <div className="space-y-4">
+              {/* Atividades */}
+              {prefs.activitiesLoves.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <Heart size={11} className="text-rose-400" /> Atividades
+                  </p>
+                  <TagGroup items={prefs.activitiesLoves} color="bg-rose-50 text-rose-700 border border-rose-100" label="Adora fazer" />
+                </div>
+              )}
+
+              {/* Lugares */}
+              {(prefs.placesLoves.length > 0 || prefs.placesNever.length > 0 || prefs.placesTolerate.length > 0) && (
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <MapPin size={11} className="text-violet-400" /> Lugares
+                  </p>
+                  <div className="space-y-2">
+                    <TagGroup items={prefs.placesLoves} color="bg-violet-50 text-violet-700 border border-violet-100" label="Adora ir" />
+                    <TagGroup items={prefs.placesNever} color="bg-red-50 text-red-700 border border-red-100" label="Não vai de jeito nenhum" />
+                    <TagGroup items={prefs.placesTolerate} color="bg-amber-50 text-amber-700 border border-amber-100" label="Não gosta mas vai" />
+                  </div>
+                </div>
+              )}
+
+              {/* Comida */}
+              {(prefs.foodLoves.length > 0 || prefs.foodNever.length > 0 || prefs.foodTolerate.length > 0) && (
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <Utensils size={11} className="text-emerald-500" /> Comida
+                  </p>
+                  <div className="space-y-2">
+                    <TagGroup items={prefs.foodLoves} color="bg-emerald-50 text-emerald-700 border border-emerald-100" label="Adora comer" />
+                    <TagGroup items={prefs.foodNever} color="bg-red-50 text-red-700 border border-red-100" label="Não come de jeito nenhum" />
+                    <TagGroup items={prefs.foodTolerate} color="bg-amber-50 text-amber-700 border border-amber-100" label="Come com exceção" />
+                  </div>
+                </div>
+              )}
+
+              {/* Outros */}
+              {prefs.otherNotes.trim() && (
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">Outras observações</p>
+                  <p className="text-sm text-stone-600 bg-stone-50 rounded-xl px-3 py-2.5 whitespace-pre-wrap">{prefs.otherNotes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function PartnerPage() {
   const { user } = useAuth()
@@ -12,6 +146,15 @@ export default function PartnerPage() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  // Modal de preferências
+  const [prefsModal, setPrefsModal] = useState<{ name: string; uid: string } | null>(null)
+  const [loadingPrefs, setLoadingPrefs] = useState(false)
+  const [viewedPrefs, setViewedPrefs] = useState<PreferenceCategory | null>(null)
+
+  // Vinculação em massa
+  const [linking, setLinking] = useState<string | null>(null) // uid da parceira sendo vinculada
+  const [linkedMsg, setLinkedMsg] = useState<string | null>(null)
 
   async function load() {
     if (!user) return
@@ -23,10 +166,30 @@ export default function PartnerPage() {
 
   useEffect(() => { load() }, [user])
 
-  /** Envia convite: cria registro pending com o email digitado.
-   *  Quando a destinatária fizer login e acessar /partner, verá o convite pendente
-   *  pelo próprio email — sem precisar buscar por UID.
-   */
+  async function linkAllDates(partnerUid: string, partnerName: string) {
+    if (!user) return
+    setLinking(partnerUid)
+    setLinkedMsg(null)
+    const count = await dbApi.linkPartnerToAllDates(user.uid, partnerUid)
+    setLinking(null)
+    setLinkedMsg(
+      count > 0
+        ? `${count} date${count > 1 ? 's' : ''} vinculado${count > 1 ? 's' : ''} a ${partnerName}!`
+        : `Todos os seus dates já estavam vinculados a ${partnerName}.`,
+    )
+    setTimeout(() => setLinkedMsg(null), 4000)
+  }
+
+  async function openPrefs(name: string, uid: string) {
+    setPrefsModal({ name, uid })
+    setViewedPrefs(null)
+    setLoadingPrefs(true)
+    const prefs = await dbApi.getUserPreferences(uid)
+    setViewedPrefs(prefs)
+    setLoadingPrefs(false)
+  }
+
+  /** Envia convite */
   async function sendInvite() {
     if (!user) return
     const email = inviteEmail.trim().toLowerCase()
@@ -39,7 +202,6 @@ export default function PartnerPage() {
       return
     }
 
-    // Verifica duplicata nos dados já carregados — sem query extra ao Firestore
     const alreadyExists = partnerships.some(
       p => p.requesterEmail === user.email?.toLowerCase()
         && p.recipientEmail === email,
@@ -99,15 +261,12 @@ export default function PartnerPage() {
 
   if (!user) return null
 
-  /** Convites pendentes que a usuária recebeu (pelo e-mail) e ainda não aceitou */
   const pendingReceived = partnerships.filter(
     p => p.recipientEmail === user.email?.toLowerCase() && p.status === 'pending',
   )
-  /** Convites que o usuário enviou e ainda estão pending */
   const pendingSent = partnerships.filter(
     p => p.requesterId === user.uid && p.status === 'pending',
   )
-  /** Parcerias aceitas */
   const accepted = partnerships.filter(p => p.status === 'accepted')
 
   return (
@@ -226,34 +385,61 @@ export default function PartnerPage() {
               const partnerPhoto = isMe ? p.recipientPhoto : p.requesterPhoto
               const partnerId    = isMe ? p.recipientId    : p.requesterId
               return (
-                <div key={p.id} className="card p-4 flex items-center gap-3">
-                  {partnerPhoto
-                    ? <img src={partnerPhoto} alt="" className="w-10 h-10 rounded-full shrink-0" />
-                    : <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0"><User size={18} className="text-stone-500" /></div>
-                  }
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-stone-900 truncate">{partnerName || partnerEmail}</p>
-                    <p className="text-xs text-stone-500 truncate">{partnerEmail}</p>
-                    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 mt-0.5">
-                      <UserCheck size={11} />
-                      Acesso ativo
-                    </span>
-                  </div>
-                  {partnerId && (
-                    <a
-                      href={`/partner/view/${partnerId}`}
-                      className="btn-secondary text-xs shrink-0"
+                <div key={p.id} className="card p-4">
+                  <div className="flex items-center gap-3">
+                    {partnerPhoto
+                      ? <img src={partnerPhoto} alt="" className="w-10 h-10 rounded-full shrink-0" />
+                      : <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0"><User size={18} className="text-stone-500" /></div>
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-stone-900 truncate">{partnerName || partnerEmail}</p>
+                      <p className="text-xs text-stone-500 truncate">{partnerEmail}</p>
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 mt-0.5">
+                        <UserCheck size={11} />
+                        Acesso ativo
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => removePartnership(p.id)}
+                      className="btn-ghost text-stone-400 hover:text-red-500 shrink-0"
+                      title="Remover parceria"
                     >
-                      Ver dates
-                    </a>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  {/* Ações do card */}
+                  {partnerId && (
+                    <div className="space-y-2 mt-3 pt-3 border-t border-stone-100">
+                      <div className="flex gap-2">
+                        <a
+                          href={`/partner/view/${partnerId}`}
+                          className="btn-secondary text-xs flex-1 justify-center"
+                        >
+                          <ChevronDown size={13} />
+                          Ver dates dela
+                        </a>
+                        <button
+                          onClick={() => openPrefs(partnerName || partnerEmail, partnerId)}
+                          className="btn-secondary text-xs flex-1 justify-center"
+                        >
+                          <Heart size={13} className="text-rose-400" />
+                          Ver preferências
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => linkAllDates(partnerId, partnerName || partnerEmail)}
+                        disabled={linking === partnerId}
+                        className="btn-secondary text-xs w-full justify-center text-violet-700 border-violet-200 hover:bg-violet-50"
+                      >
+                        {linking === partnerId
+                          ? 'Vinculando…'
+                          : 'Compartilhar todos os meus dates com ela'
+                        }
+                      </button>
+                      {linkedMsg && <p className="text-xs text-emerald-600 text-center">{linkedMsg}</p>}
+                    </div>
                   )}
-                  <button
-                    onClick={() => removePartnership(p.id)}
-                    className="btn-ghost text-stone-400 hover:text-red-500 shrink-0"
-                    title="Remover parceria"
-                  >
-                    <Trash2 size={13} />
-                  </button>
                 </div>
               )
             })}
@@ -268,6 +454,16 @@ export default function PartnerPage() {
           <p className="text-sm text-stone-500">Ninguém com acesso ainda.</p>
           <p className="text-xs text-stone-400 mt-1">Use o campo acima para convidar alguém.</p>
         </div>
+      )}
+
+      {/* ── Modal de preferências ── */}
+      {prefsModal && (
+        <PrefsModal
+          name={prefsModal.name}
+          prefs={viewedPrefs}
+          loading={loadingPrefs}
+          onClose={() => { setPrefsModal(null); setViewedPrefs(null) }}
+        />
       )}
     </div>
   )
