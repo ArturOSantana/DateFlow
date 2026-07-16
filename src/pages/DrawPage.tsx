@@ -39,20 +39,20 @@ export default function DrawPage() {
   }
 
   return (
-    <div className="px-4 pt-4 pb-6 md:px-7 md:pt-6 max-w-lg mx-auto">
+    <div className="px-4 pt-5 pb-6 md:px-7 md:pt-6 max-w-lg">
 
       {/* ── Header ── */}
       <div className="flex items-center gap-2 mb-6">
         <button
           onClick={() => navigate('/ideas')}
-          className="btn-ghost p-2 shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-stone-100 transition-colors shrink-0"
           aria-label="Voltar"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={18} />
         </button>
         <div className="min-w-0">
           <h1 className="text-base font-semibold text-stone-900 leading-tight">Sortear Ideia</h1>
-          <p className="text-xs text-stone-400 leading-tight">Uma ideia aleatória do seu banco de ideias</p>
+          <p className="text-xs text-stone-400 mt-0.5">Uma ideia aleatória do seu banco de ideias</p>
         </div>
       </div>
 
@@ -69,77 +69,78 @@ export default function DrawPage() {
           }
         />
       ) : (
-        <div className="flex flex-col items-center gap-5">
+        <div className="flex flex-col gap-4">
 
-          {/* ── Card do resultado ── */}
+          {/* ── Card resultado ── */}
           <div
             className={[
-              'w-full card p-6 flex flex-col items-center justify-center text-center min-h-[196px]',
+              'w-full rounded-2xl border border-stone-200 bg-white p-6',
+              'flex flex-col items-center justify-center text-center min-h-[220px]',
               'transition-all duration-150',
               animating ? 'opacity-50 scale-95' : 'opacity-100 scale-100',
             ].join(' ')}
           >
             {drawn ? (
               <>
-                {/* ícone de dado sem emoji — usa SVG inline */}
-                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-                  <Shuffle size={20} className="text-amber-600" />
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-4 shrink-0">
+                  <Shuffle size={22} className="text-amber-600" />
                 </div>
-                <p className="text-lg font-semibold text-stone-900 leading-snug mb-1 px-2">
+                <p className="text-xl font-semibold text-stone-900 leading-snug mb-2 px-2">
                   {drawn.name}
                 </p>
-                <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-stone-500 bg-stone-100 px-2.5 py-1 rounded-full">
                   {drawn.category}
                 </span>
                 {drawn.notes && (
-                  <p className="text-xs text-stone-500 mt-2 leading-relaxed px-2">{drawn.notes}</p>
+                  <p className="text-sm text-stone-500 mt-3 leading-relaxed px-2">{drawn.notes}</p>
                 )}
                 {drawn.estimatedPrice && (
-                  <p className="text-xs text-stone-600 font-medium mt-1">~{drawn.estimatedPrice}</p>
+                  <p className="text-sm text-stone-600 font-medium mt-1">~{drawn.estimatedPrice}</p>
                 )}
                 {drawn.favorite && (
-                  <div className="flex items-center gap-1 mt-2 text-amber-500 text-xs font-medium">
-                    <Star size={11} className="fill-amber-500" />
+                  <div className="flex items-center gap-1 mt-3 text-amber-500 text-xs font-medium">
+                    <Star size={12} className="fill-amber-500" />
                     Favorita
                   </div>
                 )}
               </>
             ) : (
               <>
-                <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center mb-3">
-                  <Shuffle size={22} className="text-stone-400" />
+                <div className="w-14 h-14 rounded-2xl bg-stone-100 flex items-center justify-center mb-4 shrink-0">
+                  <Shuffle size={26} className="text-stone-400" />
                 </div>
-                <p className="text-sm text-stone-400">
-                  Toque em Sortear para revelar uma ideia
+                <p className="text-sm text-stone-400 leading-relaxed px-4">
+                  Toque em Sortear para revelar uma ideia do seu banco
                 </p>
               </>
             )}
           </div>
 
-          {/* ── Ações ── */}
-          <div className="flex gap-3 w-full">
+          {/* ── Botões de ação ── */}
+          <div className="flex flex-col gap-2.5">
             <button
               onClick={handleDraw}
               disabled={animating}
-              className="btn-primary flex-1 justify-center"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-stone-900 text-white text-sm font-medium hover:bg-stone-800 transition-colors disabled:opacity-40"
             >
-              <Shuffle size={15} />
+              <Shuffle size={16} />
               {animating ? 'Sorteando...' : drawn ? 'Sortear de novo' : 'Sortear'}
             </button>
+
             {drawn && !animating && (
               <button
                 onClick={handleSchedule}
-                className="btn-secondary flex-1 justify-center"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-stone-100 text-stone-800 text-sm font-medium hover:bg-stone-200 transition-colors"
               >
-                <CalendarPlus size={15} />
-                Agendar
+                <CalendarPlus size={16} />
+                Agendar este date
               </button>
             )}
           </div>
 
           <p className="text-xs text-stone-400 text-center">
             {eligible.length}{' '}
-            {eligible.length === 1 ? 'ideia disponível' : 'ideias disponíveis'} para sortear
+            {eligible.length === 1 ? 'ideia disponível' : 'ideias disponíveis'}
           </p>
         </div>
       )}

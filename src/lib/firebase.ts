@@ -1,5 +1,10 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import {
+  getAuth,
+  GoogleAuthProvider,
+  browserLocalPersistence,
+  setPersistence,
+} from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -14,5 +19,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
+
+// Força localStorage como mecanismo de persistência.
+// Evita o erro "missing initial state" causado pelo sessionStorage
+// ser inacessível no Safari mobile / modo privado / WebViews.
+setPersistence(auth, browserLocalPersistence).catch(() => {
+  // Se localStorage também falhar (muito raro), o auth ainda funciona
+  // na sessão atual sem persistência — comportamento seguro.
+})
+
 export const db = getFirestore(app)
 export const googleProvider = new GoogleAuthProvider()
