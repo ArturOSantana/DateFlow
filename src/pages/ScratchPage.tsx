@@ -1,12 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Shuffle, Heart } from 'lucide-react'
+import { ArrowLeft, Plus, Shuffle, Heart, Check } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
 import { SCRATCH_IDEAS } from '../lib/scratchIdeas'
 
-// Embaralha o array de forma determinística por sessão
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -27,7 +26,6 @@ export default function ScratchPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  // Embaralha as ideias uma vez ao montar a página
   const shuffled = useMemo(() => shuffle(SCRATCH_IDEAS), [])
 
   const [tiles, setTiles] = useState<Tile[]>(() =>
@@ -77,91 +75,111 @@ export default function ScratchPage() {
     setSavedIds(new Set())
   }
 
+  const isSaved = revealed ? savedIds.has(revealed) : false
+
   return (
-    <div className="p-5 md:p-7">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-1">
-        <button onClick={() => navigate('/ideas')} className="btn-ghost p-2">
+    <div className="px-4 pt-4 pb-6 md:px-7 md:pt-6">
+
+      {/* ── Header ── */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => navigate('/ideas')}
+          className="btn-ghost p-2 shrink-0"
+          aria-label="Voltar"
+        >
           <ArrowLeft size={16} />
         </button>
-        <div>
-          <h1 className="text-base font-semibold text-stone-900">Raspadinha de Dates</h1>
-          <p className="text-xs text-stone-400">Raspe os quadradinhos e descubra ideias escondidas</p>
+        <div className="min-w-0">
+          <h1 className="text-base font-semibold text-stone-900 leading-tight">Raspadinha de Dates</h1>
+          <p className="text-xs text-stone-400 leading-tight">Toque nos quadradinhos e descubra ideias escondidas</p>
         </div>
       </div>
 
-      {/* Stats + reset */}
-      <div className="flex items-center justify-between mb-4 mt-3">
+      {/* ── Contador + botão novo jogo ── */}
+      <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-stone-500">
-          <span className="font-semibold text-stone-900">{scratchedCount}</span> de 100 revelados
+          <span className="font-semibold text-stone-900">{scratchedCount}</span>
+          <span> de 100 revelados</span>
         </p>
-        <button onClick={handleReset} className="btn-ghost py-1 px-2 text-xs gap-1.5">
+        <button
+          onClick={handleReset}
+          className="btn-ghost py-1.5 px-3 text-xs gap-1.5"
+        >
           <Shuffle size={12} />
           Novo jogo
         </button>
       </div>
 
-      {/* Revealed banner */}
+      {/* ── Banner da ideia revelada ── */}
       {revealed && (
-        <div className="card p-3 mb-4 flex items-center justify-between gap-3 bg-amber-50 border-amber-200">
-          <div className="min-w-0">
-            <p className="text-xs text-amber-700 font-medium mb-0.5">Ideia revelada ✨</p>
-            <p className="text-sm font-semibold text-stone-900 leading-snug truncate">{revealed}</p>
+        <div className="card mb-4 p-3 bg-rose-50 border-rose-200">
+          {/* linha 1: label + status */}
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide">
+              Ideia revelada
+            </p>
+            {isSaved && (
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                <Check size={11} /> Salva
+              </span>
+            )}
           </div>
-          <div className="flex gap-1.5 shrink-0">
+          {/* linha 2: nome da ideia */}
+          <p className="text-sm font-semibold text-stone-900 leading-snug mb-3">
+            {revealed}
+          </p>
+          {/* linha 3: ações em full-width */}
+          <div className="flex gap-2">
             <button
               onClick={() => handleSaveIdea(revealed)}
-              disabled={saving || savedIds.has(revealed)}
-              className={`btn-secondary py-1.5 px-2.5 text-xs gap-1 ${
-                savedIds.has(revealed) ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              disabled={saving || isSaved}
+              className="btn-secondary flex-1 justify-center py-2 text-xs gap-1.5 disabled:opacity-40"
             >
-              <Plus size={11} />
-              {savedIds.has(revealed) ? 'Salva' : 'Salvar'}
+              <Plus size={12} />
+              {saving ? 'Salvando...' : 'Salvar ideia'}
             </button>
             <button
               onClick={() => handleSchedule(revealed)}
-              className="btn-primary py-1.5 px-2.5 text-xs gap-1"
+              className="btn-primary flex-1 justify-center py-2 text-xs gap-1.5"
             >
-              Agendar
+              Agendar date
             </button>
           </div>
         </div>
       )}
 
-      {/* Grid 10×10 */}
-      <div
-        className="grid gap-1.5"
-        style={{ gridTemplateColumns: 'repeat(10, minmax(0, 1fr))' }}
-      >
+      {/* ── Grid responsivo ── */}
+      {/* Mobile: 8 colunas para os quadradinhos terem tamanho tocável (~40px) */}
+      {/* Desktop md+: 10 colunas mantendo a grade original */}
+      <div className="grid gap-1.5 grid-cols-8 md:grid-cols-10">
         {tiles.map(tile => (
           <button
             key={tile.index}
             onClick={() => !tile.scratched && handleScratch(tile.index)}
-            className={`
-              aspect-square rounded-lg text-[9px] leading-tight font-medium
-              flex items-center justify-center text-center p-0.5
-              transition-all duration-200 select-none
-              ${tile.scratched
-                ? 'bg-rose-50 border border-rose-200 text-rose-900 cursor-default scale-95'
-                : 'bg-rose-700 hover:bg-rose-800 cursor-pointer active:scale-90'
-              }
-            `}
+            className={[
+              'aspect-square rounded-lg flex items-center justify-center text-center',
+              'transition-all duration-200 select-none',
+              tile.scratched
+                ? 'bg-rose-50 border border-rose-200 text-rose-900 cursor-default scale-95 p-0.5'
+                : 'bg-rose-700 hover:bg-rose-800 active:scale-90 cursor-pointer',
+            ].join(' ')}
             title={tile.scratched ? tile.idea : 'Raspe para revelar'}
           >
             {tile.scratched ? (
-              <span className="overflow-hidden line-clamp-3 w-full text-center px-0.5">
+              <span className="text-[8px] md:text-[9px] leading-tight font-medium overflow-hidden line-clamp-3 w-full text-center px-0.5">
                 {tile.idea}
               </span>
             ) : (
-              <Heart size={10} className="fill-rose-300 text-rose-300 shrink-0" />
+              <Heart size={9} className="fill-rose-300 text-rose-300 shrink-0" />
             )}
           </button>
         ))}
       </div>
 
       <p className="text-center text-xs text-stone-400 mt-4">
-        Toque em qualquer quadradinho para revelar uma ideia de date
+        {scratchedCount === 0
+          ? 'Toque em qualquer quadradinho para revelar uma ideia'
+          : `${100 - scratchedCount} quadradinhos ainda por revelar`}
       </p>
     </div>
   )
