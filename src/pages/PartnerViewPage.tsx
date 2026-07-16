@@ -8,7 +8,8 @@ import {
 import * as dbApi from '../lib/db'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate, buildGoogleCalendarUrl } from '../lib/utils'
-import type { DateEvent, Partnership, PreferenceCategory } from '../types'
+import { getOwnerPronouns } from '../lib/gender'
+import type { DateEvent, PartnerGender, Partnership, PreferenceCategory } from '../types'
 import StatusBadge from '../components/StatusBadge'
 
 // ─── Frases motivacionais para aceitar o convite ─────────────────────────────
@@ -35,8 +36,9 @@ function getRandomQuotes(n = 3) {
   return shuffled.slice(0, n)
 }
 
-// ─── Card de preferências da parceira ────────────────────────────────────────
-function PrefsCard({ prefs }: { prefs: PreferenceCategory }) {
+// ─── Card de preferências do dono ─────────────────────────────────────────────
+function PrefsCard({ prefs, ownerGender }: { prefs: PreferenceCategory; ownerGender?: PartnerGender }) {
+  const op = getOwnerPronouns(ownerGender)
   const hasContent =
     prefs.activitiesLoves.length > 0 ||
     prefs.placesLoves.length > 0 ||
@@ -67,7 +69,7 @@ function PrefsCard({ prefs }: { prefs: PreferenceCategory }) {
     <div className="card p-4 mb-6">
       <div className="flex items-center gap-2 mb-3">
         <Heart size={14} className="text-rose-400" />
-        <p className="text-sm font-semibold text-stone-900">Preferências dela</p>
+        <p className="text-sm font-semibold text-stone-900">{op.prefsTitle}</p>
       </div>
 
       <div className="space-y-3">
@@ -128,6 +130,7 @@ export default function PartnerViewPage() {
 
   const [dates, setDates] = useState<DateEvent[]>([])
   const [ownerName, setOwnerName] = useState('')
+  const [ownerGender, setOwnerGender] = useState<PartnerGender | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [notAllowed, setNotAllowed] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -158,6 +161,9 @@ export default function PartnerViewPage() {
       if (p && p.status === 'pending' &&
         (p.recipientEmail === user.email?.toLowerCase() || p.recipientId === user.uid)) {
         setPendingPartnership(p)
+        // Busca o gênero do dono mesmo no convite pendente para mostrar pronome correto
+        const gender = await dbApi.getUserGender(partnerId)
+        setOwnerGender(gender)
         setLoading(false)
         return
       }
@@ -183,9 +189,13 @@ export default function PartnerViewPage() {
     data.forEach(d => { if (d.partnerNote) initial[d.id] = d.partnerNote })
     setNotes(initial)
 
-    // Busca preferências do dono
-    const prefs = await dbApi.getUserPreferences(partnerId)
+    // Busca preferências e gênero do dono em paralelo
+    const [prefs, gender] = await Promise.all([
+      dbApi.getUserPreferences(partnerId),
+      dbApi.getUserGender(partnerId),
+    ])
     setOwnerPrefs(prefs)
+    setOwnerGender(gender)
 
     setLoading(false)
   }
@@ -224,14 +234,32 @@ export default function PartnerViewPage() {
   }
 
   async function decideDate(dateId: string, decision: 'accepted' | 'declined', reason?: string) {
+    const targetDate = dates.find(d => d.id === dateId)
+    if (!targetDate) return
+
+    // Muda status para confirmed se aceito, mantém waiting_reply se recusado
+    const newStatus = decision === 'accepted' ? 'confirmed' : targetDate.status
+
     await dbApi.updateDate(dateId, {
       partnerDecision: decision,
       partnerDecisionReason: reason || undefined,
+      status: newStatus,
     })
-    // Atualiza localmente para refletir sem re-fetch completo
+
+    // Cria notificação para o dono do date
+    await dbApi.createNotification({
+      toUserId: targetDate.userId,
+      type: decision === 'accepted' ? 'date_accepted' : 'date_declined',
+      dateId,
+      dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,
+      fromName: user?.displayName ?? user?.email ?? 'Parceiro(a)',
+      reason: reason || undefined,
+    })
+
+    // Atualiza localmente
     setDates(prev => prev.map(d =>
       d.id === dateId
-        ? { ...d, partnerDecision: decision, partnerDecisionReason: reason }
+        ? { ...d, partnerDecision: decision, partnerDecisionReason: reason, status: newStatus }
         : d
     ))
   }
@@ -256,6 +284,7 @@ export default function PartnerViewPage() {
   // ── Convite pendente ──────────────────────────────────────────────────────
   if (pendingPartnership && !inviteAccepted) {
     const senderName = pendingPartnership.requesterName || pendingPartnership.requesterEmail
+    const op = getOwnerPronouns(ownerGender)
 
     // Tela de recusa confirmada
     if (inviteRejected) {
@@ -292,7 +321,7 @@ export default function PartnerViewPage() {
               {senderName} quer te planejar um date
             </p>
             <p className="text-xs text-stone-500">
-              Você recebeu um convite de parceria. Aceite para ver os dates planejados para você.
+              Você recebeu um convite de parceria. Aceite para ver os dates {op.plannedBy}.
             </p>
           </div>
 
@@ -391,21 +420,22 @@ export default function PartnerViewPage() {
   const hiddenDates   = dates.filter(d => d.hiddenFromPartner)
   const upcoming = visibleDates.filter(d => !['done', 'cancelled'].includes(d.status))
   const history  = visibleDates.filter(d => ['done', 'cancelled'].includes(d.status))
+  const op = getOwnerPronouns(ownerGender)
 
   return (
     <div className="p-5 md:p-7 max-w-xl">
       <div className="flex items-center gap-2 mb-1">
         {ownerName
-          ? <><User size={15} className="text-stone-400 shrink-0" /><h1 className="text-base font-semibold text-stone-900">Dates de {ownerName}</h1></>
+          ? <><User size={15} className="text-stone-400 shrink-0" /><h1 className="text-base font-semibold text-stone-900">{op.datesOf} — {ownerName}</h1></>
           : <h1 className="text-base font-semibold text-stone-900">Dates compartilhados</h1>
         }
       </div>
       <p className="text-sm text-stone-500 mb-6">
-        Você pode ver os detalhes e adicionar observações em cada date.
+        Você pode ver os detalhes e adicionar observações em cada date {op.plannedBy}.
       </p>
 
       {/* Card de preferências do dono */}
-      {ownerPrefs && <PrefsCard prefs={ownerPrefs} />}
+      {ownerPrefs && <PrefsCard prefs={ownerPrefs} ownerGender={ownerGender} />}
 
       {/* ── Dicas de dates ocultos ── */}
       {hiddenDates.length > 0 && (
@@ -416,30 +446,11 @@ export default function PartnerViewPage() {
           </p>
           <div className="space-y-2">
             {hiddenDates.map(d => (
-              <div key={d.id} className="card p-4 border-l-2 border-violet-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                    <EyeOff size={13} className="text-violet-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-stone-800">Algo especial está sendo preparado para você</p>
-                    <p className="text-xs text-stone-400">{d.date ? `${d.date.split('-').reverse().join('/')}` : 'Data a confirmar'} {d.time ? `às ${d.time}` : ''}</p>
-                  </div>
-                </div>
-                {(d.partnerHints ?? []).length > 0 && (
-                  <div className="space-y-1 mt-2 pt-2 border-t border-stone-100">
-                    <p className="text-xs text-stone-400 mb-1 flex items-center gap-1">
-                      <Lightbulb size={11} className="text-amber-400" /> Dicas:
-                    </p>
-                    {(d.partnerHints ?? []).map((hint, i) => (
-                      <div key={i} className="flex items-start gap-2 text-sm text-stone-700">
-                        <span className="text-amber-400 mt-0.5">•</span>
-                        <span>{hint}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <HiddenDateCard
+                key={d.id}
+                date={d}
+                onDecide={(decision, reason) => decideDate(d.id, decision, reason)}
+              />
             ))}
           </div>
         </div>
@@ -514,10 +525,16 @@ interface DateCardProps {
   onDecide: (decision: 'accepted' | 'declined', reason?: string) => Promise<void>
 }
 
+function getIncentiveQuote(id: string) {
+  const idx = id.charCodeAt(0) % LOVE_QUOTES.length
+  return LOVE_QUOTES[idx]
+}
+
 function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNote, saving, saved, onDecide }: DateCardProps) {
   const gcUrl = buildGoogleCalendarUrl(date.title, date.date, date.time, date.location, date.description)
   const doneTasks = date.checklist.filter(t => t.done).length
   const totalTasks = date.checklist.length
+  const quote = getIncentiveQuote(date.id)
 
   // Estado local para resposta ao date
   const [showDeclineForm, setShowDeclineForm] = useState(false)
@@ -539,13 +556,15 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
         className="w-full flex items-start justify-between gap-3 px-4 py-3.5 text-left"
       >
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-stone-900 leading-tight truncate">{date.title}</p>
+          <p className="text-sm font-medium text-stone-900 leading-tight truncate">
+            {date.hiddenFromPartner ? 'Algo especial está sendo preparado para você' : date.title}
+          </p>
           <div className="flex items-center gap-3 mt-1">
             <span className="flex items-center gap-1 text-xs text-stone-500">
               <Calendar size={11} className="text-stone-400" />
               {formatDate(date.date)}
             </span>
-            {date.location && (
+            {!date.hiddenFromPartner && date.location && (
               <span className="flex items-center gap-1 text-xs text-stone-500 truncate">
                 <MapPin size={11} className="text-stone-400" />
                 <span className="truncate">{date.location}</span>
@@ -568,8 +587,8 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             {date.time}
           </div>
 
-          {/* Local clicável */}
-          {date.location && (
+          {/* Local clicável — oculto quando é surpresa */}
+          {!date.hiddenFromPartner && date.location && (
             <div className="flex items-center gap-2 text-sm">
               <MapPin size={13} className="text-stone-400" />
               <a
@@ -583,15 +602,30 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             </div>
           )}
 
-          {/* Descrição */}
-          {date.description && (
+          {/* Descrição — oculta quando é surpresa */}
+          {!date.hiddenFromPartner && date.description && (
             <p className="text-sm text-stone-600 bg-stone-50 rounded-lg px-3 py-2.5 whitespace-pre-wrap">
               {date.description}
             </p>
           )}
 
-          {/* Checklist */}
-          {totalTasks > 0 && (
+          {/* Dicas — só quando é surpresa */}
+          {date.hiddenFromPartner && (date.partnerHints ?? []).length > 0 && (
+            <div className="space-y-1 pt-1">
+              <p className="text-xs text-stone-400 mb-1 flex items-center gap-1">
+                <Lightbulb size={11} className="text-amber-400" /> Dicas:
+              </p>
+              {(date.partnerHints ?? []).map((hint, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm text-stone-700">
+                  <span className="text-amber-400 mt-0.5">•</span>
+                  <span>{hint}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Checklist — oculto quando é surpresa */}
+          {!date.hiddenFromPartner && totalTasks > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Checklist</p>
@@ -613,8 +647,8 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             </div>
           )}
 
-          {/* Gastos — só se ele permitiu */}
-          {date.shareFinance && date.actualCost != null && (
+          {/* Gastos — só se ele permitiu e não é surpresa */}
+          {!date.hiddenFromPartner && date.shareFinance && date.actualCost != null && (
             <div>
               <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">Financeiro</p>
               <div className="flex items-center justify-between text-sm">
@@ -626,8 +660,8 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             </div>
           )}
 
-          {/* Avaliação */}
-          {date.rating != null && (
+          {/* Avaliação — oculta quando é surpresa */}
+          {!date.hiddenFromPartner && date.rating != null && (
             <div>
               <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">Avaliação</p>
               <div className="flex items-center gap-1 mb-1.5">
@@ -661,10 +695,18 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
 
           {/* ── Resposta ao date (aceitar/recusar) — só quando waiting_reply ── */}
           {date.status === 'waiting_reply' && (
-            <div className="border-t border-stone-100 pt-3">
-              <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">
+            <div className="border-t border-stone-100 pt-3 space-y-3">
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">
                 Sua resposta
               </p>
+
+              {/* Frase de incentivo — só quando ainda não respondeu */}
+              {!date.partnerDecision && !showDeclineForm && (
+                <div className="rounded-lg bg-rose-50 border border-rose-100 px-3 py-2.5">
+                  <p className="text-sm text-rose-800 italic leading-relaxed">"{quote.text}"</p>
+                  <p className="text-xs text-rose-400 mt-1">— {quote.author}</p>
+                </div>
+              )}
 
               {/* Já respondeu */}
               {date.partnerDecision && !showDeclineForm && (
@@ -721,16 +763,20 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
                     <div className="space-y-2">
                       <div>
                         <p className="text-xs font-medium text-stone-700 mb-1">
-                          Por que não quer ir? <span className="text-stone-400 font-normal">(opcional)</span>
+                          Por que não quer ir?{' '}
+                          <span className="text-red-500">*</span>
                         </p>
                         <textarea
                           className="textarea text-sm"
                           rows={2}
-                          placeholder="Ex: Não gosto desse tipo de lugar…"
+                          placeholder="Conte o motivo para não ir…"
                           value={declineReason}
                           onChange={e => setDeclineReason(e.target.value)}
                           autoFocus
                         />
+                        {declineReason.trim() === '' && (
+                          <p className="text-xs text-red-500 mt-1">O motivo é obrigatório para recusar.</p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -741,8 +787,8 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
                         </button>
                         <button
                           onClick={() => handleDecide('declined')}
-                          disabled={deciding}
-                          className="btn-secondary flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50"
+                          disabled={deciding || declineReason.trim() === ''}
+                          className="btn-secondary flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <ThumbsDown size={13} />
                           {deciding ? 'Salvando…' : 'Confirmar recusa'}
@@ -776,6 +822,170 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
               {saving ? 'Salvando…' : saved ? '✓ Salvo!' : 'Salvar observação'}
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Card de date oculto (surpresa) ──────────────────────────────────────────
+
+function HiddenDateCard({
+  date,
+  onDecide,
+}: {
+  date: DateEvent
+  onDecide: (decision: 'accepted' | 'declined', reason?: string) => Promise<void>
+}) {
+  const quote = getIncentiveQuote(date.id)
+  const [showDeclineForm, setShowDeclineForm] = useState(false)
+  const [declineReason, setDeclineReason] = useState('')
+  const [deciding, setDeciding] = useState(false)
+
+  async function handleDecide(decision: 'accepted' | 'declined') {
+    setDeciding(true)
+    await onDecide(decision, decision === 'declined' ? declineReason.trim() : undefined)
+    setDeciding(false)
+    setShowDeclineForm(false)
+  }
+
+  return (
+    <div className="card p-4 border-l-2 border-violet-200">
+      {/* Cabeçalho: ícone + data/hora + status */}
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+            <EyeOff size={13} className="text-violet-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-stone-800">Algo especial está sendo preparado para você</p>
+            <p className="text-xs text-stone-400">
+              {date.date ? date.date.split('-').reverse().join('/') : 'Data a confirmar'}
+              {date.time ? ` às ${date.time}` : ''}
+            </p>
+          </div>
+        </div>
+        <StatusBadge status={date.status} />
+      </div>
+
+      {/* Dicas */}
+      {(date.partnerHints ?? []).length > 0 && (
+        <div className="space-y-1 mt-2 pt-2 border-t border-stone-100">
+          <p className="text-xs text-stone-400 mb-1 flex items-center gap-1">
+            <Lightbulb size={11} className="text-amber-400" /> Dicas:
+          </p>
+          {(date.partnerHints ?? []).map((hint, i) => (
+            <div key={i} className="flex items-start gap-2 text-sm text-stone-700">
+              <span className="text-amber-400 mt-0.5">•</span>
+              <span>{hint}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Resposta ao date — só quando waiting_reply */}
+      {date.status === 'waiting_reply' && (
+        <div className="border-t border-stone-100 mt-3 pt-3 space-y-3">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Sua resposta</p>
+
+          {/* Frase de incentivo — só quando ainda não respondeu */}
+          {!date.partnerDecision && !showDeclineForm && (
+            <div className="rounded-lg bg-rose-50 border border-rose-100 px-3 py-2.5">
+              <p className="text-sm text-rose-800 italic leading-relaxed">"{quote.text}"</p>
+              <p className="text-xs text-rose-400 mt-1">— {quote.author}</p>
+            </div>
+          )}
+
+          {/* Já respondeu */}
+          {date.partnerDecision && !showDeclineForm && (
+            <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${
+              date.partnerDecision === 'accepted'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-red-50 text-red-700'
+            }`}>
+              {date.partnerDecision === 'accepted'
+                ? <ThumbsUp size={13} className="shrink-0" />
+                : <ThumbsDown size={13} className="shrink-0" />
+              }
+              <span className="text-xs font-medium">
+                {date.partnerDecision === 'accepted' ? 'Você aceitou esse date' : 'Você recusou esse date'}
+              </span>
+              <button
+                onClick={() => {
+                  if (date.partnerDecision === 'declined') setShowDeclineForm(true)
+                  else handleDecide('declined')
+                }}
+                className="ml-auto text-xs underline opacity-60 hover:opacity-100"
+              >
+                Mudar
+              </button>
+            </div>
+          )}
+          {date.partnerDecision === 'declined' && date.partnerDecisionReason && !showDeclineForm && (
+            <p className="text-xs text-stone-500 italic">"{date.partnerDecisionReason}"</p>
+          )}
+
+          {/* Ainda não respondeu ou mudando */}
+          {(!date.partnerDecision || showDeclineForm) && (
+            <div className="space-y-2">
+              {!showDeclineForm && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleDecide('accepted')}
+                    disabled={deciding}
+                    className="btn-secondary flex-1 justify-center text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                  >
+                    <ThumbsUp size={13} />
+                    Vou adorar!
+                  </button>
+                  <button
+                    onClick={() => setShowDeclineForm(true)}
+                    className="btn-secondary flex-1 justify-center text-xs text-stone-600"
+                  >
+                    <ThumbsDown size={13} />
+                    Não quero ir
+                  </button>
+                </div>
+              )}
+              {showDeclineForm && (
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs font-medium text-stone-700 mb-1">
+                      Por que não quer ir?{' '}
+                      <span className="text-red-500">*</span>
+                    </p>
+                    <textarea
+                      className="textarea text-sm"
+                      rows={2}
+                      placeholder="Conte o motivo para não ir…"
+                      value={declineReason}
+                      onChange={e => setDeclineReason(e.target.value)}
+                      autoFocus
+                    />
+                    {declineReason.trim() === '' && (
+                      <p className="text-xs text-red-500 mt-1">O motivo é obrigatório para recusar.</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowDeclineForm(false)}
+                      className="btn-ghost flex-1 justify-center text-xs"
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      onClick={() => handleDecide('declined')}
+                      disabled={deciding || declineReason.trim() === ''}
+                      className="btn-secondary flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <ThumbsDown size={13} />
+                      {deciding ? 'Salvando…' : 'Confirmar recusa'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

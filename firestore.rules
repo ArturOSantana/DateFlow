@@ -60,6 +60,23 @@ service cloud.firestore {
                     && request.auth.uid == request.resource.data.userId;
     }
 
+    // ── notifications ─────────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      // Só o destinatário pode ler suas notificações
+      allow read: if request.auth != null
+                  && request.auth.uid == resource.data.toUserId;
+
+      // Criação: feita pelo parceiro (withPartnerId) ao responder um date
+      // Qualquer usuário autenticado pode criar (a lógica de autorização está no cliente)
+      allow create: if request.auth != null;
+
+      // Atualização (marcar como lida): só o destinatário
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.toUserId
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                                        .hasOnly(['read']);
+    }
+
     // ── userPreferences ───────────────────────────────────────────────────────
     match /userPreferences/{userId} {
       // Dono: lê e escreve suas próprias preferências

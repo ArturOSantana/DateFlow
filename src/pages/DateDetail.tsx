@@ -224,6 +224,9 @@ export default function DateDetail() {
   // Pronomes dinâmicos baseados no gênero da parceira/parceiro
   const pg = getPronouns(withPartnerGender)
 
+  // Verdade se o usuário logado é o criador deste date
+  const isOwner = !!user && date.userId === user.uid
+
   return (
     <div className="p-5 md:p-7 max-w-xl">
       {/* Back + actions */}
@@ -231,15 +234,18 @@ export default function DateDetail() {
         <button onClick={() => navigate(-1)} className="btn-ghost p-2 -ml-2">
           <ArrowLeft size={16} />
         </button>
-        <div className="flex items-center gap-1">
-          <button onClick={() => navigate(`/dates/${id}/edit`)} className="btn-ghost">
-            <Edit2 size={14} />
-            Editar
-          </button>
-          <button onClick={handleDelete} disabled={deleting} className="btn-ghost text-red-500 hover:text-red-600">
-            <Trash2 size={14} />
-          </button>
-        </div>
+        {/* Editar/excluir só para o dono do date */}
+        {user && date.userId === user.uid && (
+          <div className="flex items-center gap-1">
+            <button onClick={() => navigate(`/dates/${id}/edit`)} className="btn-ghost">
+              <Edit2 size={14} />
+              Editar
+            </button>
+            <button onClick={handleDelete} disabled={deleting} className="btn-ghost text-red-500 hover:text-red-600">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Title + status */}
@@ -318,8 +324,8 @@ export default function DateDetail() {
         )}
       </div>
 
-      {/* ── Visibilidade + Dicas para a parceira/parceiro ── */}
-      {date.withPartnerId && (
+      {/* ── Visibilidade + Dicas para a parceira/parceiro (só para o dono) ── */}
+      {isOwner && date.withPartnerId && (
         <div className="card p-4 mb-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
@@ -393,7 +399,7 @@ export default function DateDetail() {
       )}
 
       {/* ── Orçamento (só leitura) — visível antes do date ser confirmado ── */}
-      {!isActive && date.budget != null && (
+      {isOwner && !isActive && date.budget != null && (
         <div className="card px-4 py-3 mb-5 flex items-center justify-between">
           <span className="flex items-center gap-2 text-sm text-stone-500">
             <DollarSign size={14} className="text-stone-400" />
@@ -403,8 +409,8 @@ export default function DateDetail() {
         </div>
       )}
 
-      {/* ── Controle financeiro — disponível a partir de "Confirmado" ── */}
-      {isActive && (
+      {/* ── Controle financeiro — disponível a partir de "Confirmado", só para o dono ── */}
+      {isOwner && isActive && (
         <div className="card mb-5 overflow-hidden">
           {/* Cabeçalho */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
@@ -529,7 +535,7 @@ export default function DateDetail() {
         </div>
       )}
 
-      {/* Checklist */}
+      {/* Checklist — interativo só para o dono; visível para todos */}
       {totalTasks > 0 && (
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2.5">
@@ -544,26 +550,38 @@ export default function DateDetail() {
           </div>
           <div className="space-y-1">
             {date.checklist.map(task => (
-              <button
-                key={task.id}
-                onClick={() => toggleTask(task.id)}
-                className="flex items-center gap-2.5 w-full text-left py-1.5 group"
-              >
-                {task.done
-                  ? <CheckCircle2 size={16} className="text-stone-900 shrink-0" />
-                  : <Circle size={16} className="text-stone-300 group-hover:text-stone-400 shrink-0" />
-                }
-                <span className={`text-sm ${task.done ? 'line-through text-stone-400' : 'text-stone-700'}`}>
-                  {task.text}
-                </span>
-              </button>
+              isOwner ? (
+                <button
+                  key={task.id}
+                  onClick={() => toggleTask(task.id)}
+                  className="flex items-center gap-2.5 w-full text-left py-1.5 group"
+                >
+                  {task.done
+                    ? <CheckCircle2 size={16} className="text-stone-900 shrink-0" />
+                    : <Circle size={16} className="text-stone-300 group-hover:text-stone-400 shrink-0" />
+                  }
+                  <span className={`text-sm ${task.done ? 'line-through text-stone-400' : 'text-stone-700'}`}>
+                    {task.text}
+                  </span>
+                </button>
+              ) : (
+                <div key={task.id} className="flex items-center gap-2.5 py-1.5">
+                  {task.done
+                    ? <CheckCircle2 size={16} className="text-stone-900 shrink-0" />
+                    : <Circle size={16} className="text-stone-300 shrink-0" />
+                  }
+                  <span className={`text-sm ${task.done ? 'line-through text-stone-400' : 'text-stone-700'}`}>
+                    {task.text}
+                  </span>
+                </div>
+              )
             ))}
           </div>
         </div>
       )}
 
-      {/* Avaliação — só aparece quando realizado */}
-      {date.status === 'done' && (
+      {/* Avaliação — só aparece quando realizado e só para o dono */}
+      {isOwner && date.status === 'done' && (
         <div className="card p-4 mb-5">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">Sua avaliação</p>
           <div className="flex items-center gap-1 mb-4">
@@ -609,18 +627,20 @@ export default function DateDetail() {
 
       {/* Actions */}
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <button onClick={() => setShareOpen(true)} className="btn-secondary justify-center">
-          <Share2 size={14} />
-          Compartilhar
-        </button>
-        <a href={gcUrl} target="_blank" rel="noreferrer" className="btn-secondary justify-center">
+        {isOwner && (
+          <button onClick={() => setShareOpen(true)} className="btn-secondary justify-center">
+            <Share2 size={14} />
+            Compartilhar
+          </button>
+        )}
+        <a href={gcUrl} target="_blank" rel="noreferrer" className={`btn-secondary justify-center ${isOwner ? '' : 'col-span-2'}`}>
           <CalendarPlus size={14} />
           Google Agenda
         </a>
       </div>
 
-      {/* Status transitions */}
-      <div className="flex flex-wrap gap-2">
+      {/* Status transitions — só para o dono */}
+      {isOwner && <div className="flex flex-wrap gap-2">
         {date.status === 'waiting_courage' && (
           <>
             <button onClick={() => setStatus('waiting_money')} className="btn-ghost flex-1 justify-center text-amber-700">
@@ -675,7 +695,7 @@ export default function DateDetail() {
             Restaurar
           </button>
         )}
-      </div>
+      </div>}
 
       {/* ── Modal: Compartilhar ── */}
       <Modal open={shareOpen} onClose={() => setShareOpen(false)} title="Compartilhar date">

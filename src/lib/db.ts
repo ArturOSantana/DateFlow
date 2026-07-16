@@ -12,7 +12,7 @@ import {
   orderBy,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { DateEvent, Idea, Partnership, UserPreferences, PreferenceCategory } from '../types'
+import type { AppNotification, DateEvent, Idea, NotificationType, Partnership, UserPreferences, PreferenceCategory } from '../types'
 
 // ─── Dates ───────────────────────────────────────────────────────────────────
 
@@ -226,5 +226,85 @@ export async function getUserPreferences(userId: string): Promise<PreferenceCate
 
 export async function saveUserPreferences(userId: string, preferences: PreferenceCategory): Promise<void> {
   const ref = doc(db, 'userPreferences', userId)
-  await setDoc(ref, { userId, preferences, updatedAt: Date.now() })
+  await setDoc(ref, { userId, preferences, updatedAt: Date.now() }, { merge: true })
+}
+
+/** Retorna o gênero que o usuário definiu para si mesmo no perfil. */
+export async function getUserGender(userId: string): Promise<import('../types').PartnerGender | undefined> {
+  const ref = doc(db, 'userPreferences', userId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return undefined
+  const data = snap.data() as UserPreferences
+  return data.ownerGender
+}
+
+/** Salva apenas o gênero do usuário (sem sobrescrever as preferências). */
+export async function saveUserGender(userId: string, ownerGender: import('../types').PartnerGender): Promise<void> {
+  const ref = doc(db, 'userPreferences', userId)
+  await setDoc(ref, { userId, ownerGender, updatedAt: Date.now() }, { merge: true })
+}
+
+/**
+ * Retorna os dates planejados POR outros usuários onde withPartnerId === viewerUid.
+ * Usado para mostrar ao usuário os dates que alguém planejou para ele/ela.
+ */
+export async function getIncomingDates(viewerUid: string): Promise<DateEvent[]> {
+  const q = query(
+    collection(db, 'dates'),
+    where('withPartnerId', '==', viewerUid),
+    orderBy('date', 'asc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as DateEvent))
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export async function createNotification(data: {
+  toUserId: string
+  type: NotificationType
+  dateId: string
+  dateTitle: string
+  fromName: string
+  reason?: string
+}): Promise<void> {
+  await addDoc(collection(db, 'notifications'), {
+    ...data,
+    read: false,
+    createdAt: Date.now(),
+  })
+}
+
+export async function getNotifications(userId: string): Promise<AppNotification[]> {
+  const q = query(
+    collection(db, 'notifications'),
+    where('toUserId', '==', userId),
+    orderBy('createdAt', 'desc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification))
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await updateDoc(doc(db, 'notifications', id), { read: true })
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  const q = query(
+    collection(db, 'notifications'),
+    where('toUserId', '==', userId),
+    where('read', '==', false),
+  )
+  const snap = await getDocs(q)
+  await Promise.all(snap.docs.map(d => updateDoc(d.ref, { read: true })))
+}
+
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  const q = query(
+    collection(db, 'notifications'),
+    where('toUserId', '==', userId),
+    where('read', '==', false),
+  )
+  const snap = await getDocs(q)
+  return snap.size
 }

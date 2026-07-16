@@ -64,6 +64,29 @@ export interface DateEvent {
   updatedAt: number
 }
 
+// ─── Notificações in-app ──────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'date_accepted'   // parceiro aceitou o date
+  | 'date_declined'   // parceiro recusou o date
+
+export interface AppNotification {
+  id: string
+  /** UID do usuário que deve receber a notificação (dono do date) */
+  toUserId: string
+  type: NotificationType
+  /** ID do date relacionado */
+  dateId: string
+  /** Título do date (para mostrar na notificação) */
+  dateTitle: string
+  /** Nome de quem respondeu */
+  fromName: string
+  /** Motivo da recusa, se houver */
+  reason?: string
+  read: boolean
+  createdAt: number
+}
+
 /** Status do convite de parceria */
 export type PartnershipStatus = 'pending' | 'accepted' | 'rejected'
 
@@ -147,5 +170,11 @@ export interface UserPreferences {
   /** UID do usuário */
   userId: string
   preferences: PreferenceCategory
+  /**
+   * Gênero do próprio usuário — usado para que a parceira/parceiro
+   * veja os pronomes corretos ao se referir a quem planejou os dates.
+   * 'f' = ela / 'm' = ele. Default implícito: 'm'
+   */
+  ownerGender?: PartnerGender
   updatedAt: number
 }

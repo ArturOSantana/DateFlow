@@ -1,7 +1,8 @@
 import type { PartnerGender } from '../types'
 
 /**
- * Retorna pronomes e termos genéricos de acordo com o gênero da parceira/parceiro.
+ * Retorna pronomes para se referir à parceira/parceiro do usuário logado.
+ * Ou seja: quem o usuário logado está chamando de "ela/ele".
  * Default: feminino ('f') para manter compatibilidade com dados antigos.
  */
 export function getPronouns(gender: PartnerGender | undefined) {
@@ -46,4 +47,36 @@ export function getPronouns(gender: PartnerGender | undefined) {
   }
 }
 
+/**
+ * Retorna pronomes para o dono da conta, vistos PELA parceira/parceiro.
+ * Ex: "Ele planejou", "Dates dele", "Aceitou o convite dele"
+ * Default: masculino ('m') — a maioria dos casos de uso iniciais.
+ */
+export function getOwnerPronouns(gender: PartnerGender | undefined) {
+  const m = !gender || gender === 'm'
+  return {
+    /** "ele" / "ela" */
+    subject: m ? 'ele' : 'ela',
+    /** "dele" / "dela" */
+    of: m ? 'dele' : 'dela',
+    /** Artigo definido "o" / "a" */
+    article: m ? 'o' : 'a',
+    /** "parceiro" / "parceira" */
+    partner: m ? 'parceiro' : 'parceira',
+    /** "Parceiro" / "Parceira" */
+    Partner: m ? 'Parceiro' : 'Parceira',
+    /** "Dates dele" / "Dates dela" */
+    datesOf: m ? 'Dates dele' : 'Dates dela',
+    /** "planejados por ele" / "planejados por ela" */
+    plannedBy: m ? 'planejados por ele' : 'planejados por ela',
+    /** "quer te planejar um date" */
+    wantsToDate: m ? 'quer te planejar um date' : 'quer te planejar um date',
+    /** "Preferências dele" / "Preferências dela" para exibir as prefs do dono */
+    prefsTitle: m ? 'Preferências dele' : 'Preferências dela',
+    /** "Ele planejou" / "Ela planejou" */
+    planned: m ? 'Ele planejou' : 'Ela planejou',
+  }
+}
+
 export type Pronouns = ReturnType<typeof getPronouns>
+export type OwnerPronouns = ReturnType<typeof getOwnerPronouns>

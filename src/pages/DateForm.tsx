@@ -155,7 +155,9 @@ export default function DateForm() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="label">Título *</label>
+          <label className="label">
+            Título <span className="text-red-500">*</span>
+          </label>
           <input
             className="input"
             value={form.title}
@@ -166,7 +168,9 @@ export default function DateForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Data *</label>
+            <label className="label">
+              Data <span className="text-red-500">*</span>
+            </label>
             <input
               type="date"
               className="input"
@@ -175,7 +179,9 @@ export default function DateForm() {
             />
           </div>
           <div>
-            <label className="label">Horário *</label>
+            <label className="label">
+              Horário <span className="text-red-500">*</span>
+            </label>
             <input
               type="time"
               className="input"

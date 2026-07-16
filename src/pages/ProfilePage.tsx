@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
 import * as dbApi from '../lib/db'
 import { getPronouns } from '../lib/gender'
-import type { PreferenceCategory } from '../types'
+import type { PartnerGender, PreferenceCategory } from '../types'
 
 const EMPTY_PREFS: PreferenceCategory = {
   activitiesLoves: [],
@@ -82,7 +82,7 @@ function TagList({
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, logout } = useAuth()
-  const { dates, ideas, partnerGender } = useApp()
+  const { dates, ideas, partnerGender, ownerGender, refreshOwnerGender } = useApp()
   const navigate = useNavigate()
 
   const [prefs, setPrefs] = useState<PreferenceCategory>(EMPTY_PREFS)
@@ -90,6 +90,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [prefsOpen, setPrefsOpen] = useState(false)
+  const [savingGender, setSavingGender] = useState(false)
 
   const stats = [
     { label: 'Dates criados', value: dates.length },
@@ -105,6 +106,14 @@ export default function ProfilePage() {
       setLoadingPrefs(false)
     })
   }, [user])
+
+  async function handleGenderChange(g: PartnerGender) {
+    if (!user) return
+    setSavingGender(true)
+    await dbApi.saveUserGender(user.uid, g)
+    await refreshOwnerGender()
+    setSavingGender(false)
+  }
 
   const hasAnyPref = !loadingPrefs && (
     prefs.activitiesLoves.length > 0 ||
@@ -149,6 +158,39 @@ export default function ProfilePage() {
           <p className="font-medium text-stone-900">{user?.displayName}</p>
           <p className="text-sm text-stone-500 truncate">{user?.email}</p>
         </div>
+      </div>
+
+      {/* ── Meu gênero — como a parceira/parceiro me vê ── */}
+      <div className="card p-4 mb-4">
+        <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Meu gênero</p>
+        <p className="text-xs text-stone-400 mb-3">
+          Define como {pg.subject} vai te ver: "ele planejou" ou "ela planejou".
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleGenderChange('m')}
+            disabled={savingGender}
+            className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
+              ownerGender === 'm' || ownerGender === undefined
+                ? 'bg-sky-50 border-sky-300 text-sky-700'
+                : 'border-stone-200 text-stone-400 hover:bg-stone-50'
+            }`}
+          >
+            Homem
+          </button>
+          <button
+            onClick={() => handleGenderChange('f')}
+            disabled={savingGender}
+            className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
+              ownerGender === 'f'
+                ? 'bg-rose-50 border-rose-300 text-rose-700'
+                : 'border-stone-200 text-stone-400 hover:bg-stone-50'
+            }`}
+          >
+            Mulher
+          </button>
+        </div>
+        {savingGender && <p className="text-xs text-stone-400 mt-2">Salvando…</p>}
       </div>
 
       {/* ── Banner CTA: aparece só quando preferências estão totalmente vazias ── */}
