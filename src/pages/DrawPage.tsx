@@ -19,7 +19,7 @@ export default function DrawPage() {
     setAnimating(true)
     setDrawn(null)
     setSpinKey(k => k + 1)
-
+// knjnn
     let count = 0
     const interval = setInterval(() => {
       const random = eligible[Math.floor(Math.random() * eligible.length)]
@@ -130,7 +130,7 @@ export default function DrawPage() {
             )}
           </div>
 
-          {/* Botão sortear */}
+          {/* Botão sear */}
           <button
             onClick={handleDraw}
             disabled={animating}
