@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut,
   type User,
 } from 'firebase/auth'
@@ -22,28 +21,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let unsub: (() => void) | undefined
-
-    // Aguarda o resultado do redirect ANTES de liberar o loading.
-    // Sem esse await, o onAuthStateChanged dispara user=null enquanto
-    // o getRedirectResult ainda está processando, causando redirect para /login.
-    getRedirectResult(auth)
-      .catch(() => {
-        // Usuário cancelou ou erro de rede — segue o fluxo normal
-      })
-      .finally(() => {
-        // Só registra o listener depois que o redirect foi processado
-        unsub = onAuthStateChanged(auth, u => {
-          setUser(u)
-          setLoading(false)
-        })
-      })
-
-    return () => unsub?.()
+    const unsub = onAuthStateChanged(auth, u => {
+      setUser(u)
+      setLoading(false)
+    })
+    return unsub
   }, [])
 
   async function signInWithGoogle() {
-    await signInWithRedirect(auth, googleProvider)
+    await signInWithPopup(auth, googleProvider)
   }
 
   async function logout() {
