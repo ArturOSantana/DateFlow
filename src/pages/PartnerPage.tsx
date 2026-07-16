@@ -56,11 +56,11 @@ export default function PartnerPage() {
         requesterId: user.uid,
         requesterEmail: user.email!.toLowerCase(),
         requesterName: user.displayName ?? 'Usuário',
-        requesterPhoto: user.photoURL ?? undefined,
+        requesterPhoto: user.photoURL ?? null,
         recipientId: '',
         recipientEmail: email,
         recipientName: '',
-        recipientPhoto: undefined,
+        recipientPhoto: null,
         status: 'pending',
       })
       setInviteEmail('')
@@ -80,7 +80,7 @@ export default function PartnerPage() {
       status: 'accepted',
       recipientId: user.uid,
       recipientName: user.displayName ?? 'Usuária',
-      recipientPhoto: user.photoURL ?? undefined,
+      recipientPhoto: user.photoURL ?? null,
     })
     await load()
   }

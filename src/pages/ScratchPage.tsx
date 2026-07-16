@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Shuffle } from 'lucide-react'
+import { ArrowLeft, Plus, Shuffle, Heart } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
@@ -143,8 +143,8 @@ export default function ScratchPage() {
               flex items-center justify-center text-center p-0.5
               transition-all duration-200 select-none
               ${tile.scratched
-                ? 'bg-amber-50 border border-amber-200 text-amber-800 cursor-default scale-95'
-                : 'bg-stone-200 hover:bg-stone-300 text-transparent cursor-pointer active:scale-90'
+                ? 'bg-rose-50 border border-rose-200 text-rose-900 cursor-default scale-95'
+                : 'bg-rose-700 hover:bg-rose-800 cursor-pointer active:scale-90'
               }
             `}
             title={tile.scratched ? tile.idea : 'Raspe para revelar'}
@@ -154,7 +154,7 @@ export default function ScratchPage() {
                 {tile.idea}
               </span>
             ) : (
-              <span className="text-stone-400 text-base">?</span>
+              <Heart size={10} className="fill-rose-300 text-rose-300 shrink-0" />
             )}
           </button>
         ))}

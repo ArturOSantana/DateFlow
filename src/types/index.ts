@@ -66,12 +66,12 @@ export interface Partnership {
   requesterId: string
   requesterEmail: string
   requesterName: string
-  requesterPhoto?: string
+  requesterPhoto?: string | null
   /** UID de quem recebeu */
   recipientId: string
   recipientEmail: string
   recipientName: string
-  recipientPhoto?: string
+  recipientPhoto?: string | null
   status: PartnershipStatus
   createdAt: number
   updatedAt: number
