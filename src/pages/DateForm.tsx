@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2, DollarSign } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
 import * as dbApi from '../lib/db'
 import { generateId, generateShareToken } from '../lib/utils'
-import type { ChecklistItem, DateEvent, DateStatus } from '../types'
+import type { ChecklistItem, DateEvent, DateStatus, Partnership } from '../types'
 
 const EMPTY: Omit<DateEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
   title: '',
@@ -28,6 +28,15 @@ export default function DateForm() {
   const { dates, refreshDates } = useApp()
   const isEdit = Boolean(id)
 
+  // Parcerias ativas — para o seletor "esse date é com quem"
+  const [partnerships, setPartnerships] = useState<Partnership[]>([])
+  useEffect(() => {
+    if (!user) return
+    dbApi.getMyPartnerships(user.uid).then(all =>
+      setPartnerships(all.filter(p => p.status === 'accepted'))
+    )
+  }, [user])
+
   const existing = isEdit ? dates.find(d => d.id === id) : undefined
 
   const [form, setForm] = useState<Omit<DateEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>(
@@ -46,6 +55,7 @@ export default function DateForm() {
           actualCost: existing.actualCost,
           rating: existing.rating,
           review: existing.review,
+          withPartnerId: existing.withPartnerId,
         }
       : {
           ...EMPTY,
@@ -203,6 +213,31 @@ export default function DateForm() {
             </div>
           </div>
         </div>
+
+        {/* Com quem é esse date — só aparece se há parcerias ativas */}
+        {partnerships.length > 0 && (
+          <div>
+            <label className="label">Esse date é com quem?</label>
+            <select
+              className="input"
+              value={form.withPartnerId ?? ''}
+              onChange={e => set('withPartnerId', e.target.value || undefined)}
+            >
+              <option value="">Não especificado</option>
+              {partnerships.map(p => {
+                const isMe = p.requesterId === user!.uid
+                const name  = isMe ? p.recipientName  : p.requesterName
+                const email = isMe ? p.recipientEmail : p.requesterEmail
+                const uid   = isMe ? p.recipientId    : p.requesterId
+                return (
+                  <option key={p.id} value={uid}>
+                    {name || email}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="label">Status</label>

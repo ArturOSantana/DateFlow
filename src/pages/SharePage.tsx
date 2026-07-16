@@ -1,28 +1,45 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Calendar, Clock, MapPin, CheckCircle2, Circle, Heart, CalendarPlus, Star } from 'lucide-react'
-import { getDateByShareToken } from '../lib/db'
+import { getDateByShareToken, getPartnership } from '../lib/db'
 import { formatDate, buildGoogleCalendarUrl } from '../lib/utils'
 import type { DateEvent } from '../types'
 import StatusBadge from '../components/StatusBadge'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function SharePage() {
   const { token } = useParams()
+  const navigate = useNavigate()
+  const { user, loading: authLoading } = useAuth()
   const [date, setDate] = useState<DateEvent | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    if (!token) return
-    getDateByShareToken(token)
-      .then(d => {
-        if (d) setDate(d)
-        else setNotFound(true)
-      })
-      .finally(() => setLoading(false))
-  }, [token])
+    if (!token || authLoading) return
 
-  if (loading) {
+    getDateByShareToken(token).then(async d => {
+      if (!d) {
+        setNotFound(true)
+        setLoading(false)
+        return
+      }
+
+      // Se a usuária está logada e é parceira do dono, redireciona para visão completa
+      if (user && user.uid !== d.userId) {
+        const partnership = await getPartnership(user.uid, d.userId)
+        if (partnership && partnership.status === 'accepted') {
+          navigate(`/partner/view/${d.userId}`, { replace: true })
+          return
+        }
+      }
+
+      setDate(d)
+      setLoading(false)
+    })
+  }, [token, user, authLoading, navigate])
+
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-stone-200 border-t-stone-900 rounded-full animate-spin" />

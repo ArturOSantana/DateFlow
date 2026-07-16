@@ -15,6 +15,8 @@ import HistoryPage from './pages/HistoryPage'
 import FinancePage from './pages/FinancePage'
 import ProfilePage from './pages/ProfilePage'
 import SharePage from './pages/SharePage'
+import PartnerPage from './pages/PartnerPage'
+import PartnerViewPage from './pages/PartnerViewPage'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -64,6 +66,8 @@ export default function App() {
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/partner" element={<PartnerPage />} />
+        <Route path="/partner/view/:partnerId" element={<PartnerViewPage />} />
       </Route>
 
       {/* Fallback */}

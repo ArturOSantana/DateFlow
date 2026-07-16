@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── dates ────────────────────────────────────────────────────────────────
+    match /dates/{dateId} {
+      // Dono lê e escreve tudo
+      allow read, write: if request.auth != null
+                         && request.auth.uid == resource.data.userId;
+
+      // Criação: só o próprio usuário pode criar com seu userId
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.userId;
+
+      // Leitura pela pessoa vinculada: só se withPartnerId == seu UID
+      allow read: if request.auth != null
+                  && resource.data.withPartnerId == request.auth.uid;
+
+      // A pessoa vinculada pode escrever SOMENTE o campo partnerNote
+      allow update: if request.auth != null
+                    && resource.data.withPartnerId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                                        .hasOnly(['partnerNote', 'updatedAt']);
+    }
+
+    // ── partnerships ─────────────────────────────────────────────────────────
+    match /partnerships/{partnershipId} {
+      // Qualquer usuário autenticado pode criar (enviar convite)
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.requesterId;
+
+      // Leitura: participantes do vínculo
+      allow read: if request.auth != null
+                  && (request.auth.uid == resource.data.requesterId
+                      || request.auth.uid == resource.data.recipientId
+                      || resource.data.recipientEmail == request.auth.token.email);
+
+      // Atualização: o recipient aceita/recusa; qualquer participante pode deletar
+      allow update: if request.auth != null
+                    && (request.auth.uid == resource.data.requesterId
+                        || request.auth.uid == resource.data.recipientId
+                        || resource.data.recipientEmail == request.auth.token.email);
+
+      // Deleção: qualquer um dos dois participantes
+      allow delete: if request.auth != null
+                    && (request.auth.uid == resource.data.requesterId
+                        || request.auth.uid == resource.data.recipientId);
+    }
+
+    // ── ideas ─────────────────────────────────────────────────────────────────
+    match /ideas/{ideaId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}

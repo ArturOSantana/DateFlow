@@ -42,6 +42,37 @@ export interface DateEvent {
   rating?: number
   /** Comentário/review do date */
   review?: string
+  /**
+   * UID de quem vai participar do date (a outra pessoa com acesso).
+   * Só aparecem para ela os dates onde withPartnerId === seu UID.
+   */
+  withPartnerId?: string
+  /** Observações adicionadas pela parceira no link de parceira */
+  partnerNote?: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** Status do convite de parceria */
+export type PartnershipStatus = 'pending' | 'accepted' | 'rejected'
+
+/**
+ * Representa o vínculo entre dois usuários (quem enviou e quem recebeu).
+ * Armazenada na coleção `partnerships` do Firestore.
+ */
+export interface Partnership {
+  id: string
+  /** UID de quem enviou o convite */
+  requesterId: string
+  requesterEmail: string
+  requesterName: string
+  requesterPhoto?: string
+  /** UID de quem recebeu */
+  recipientId: string
+  recipientEmail: string
+  recipientName: string
+  recipientPhoto?: string
+  status: PartnershipStatus
   createdAt: number
   updatedAt: number
 }
