@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, CheckCircle2, Clock, Plus, ArrowRight, Heart } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Clock, Plus, ArrowRight, Heart, Flame } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
 import { formatDateLabel, formatDateShort, isDatePast } from '../lib/utils'
@@ -93,6 +93,21 @@ export default function Dashboard() {
           <p className="text-xs text-stone-500 mt-0.5">Tarefas</p>
         </div>
       </div>
+
+      {/* Brasa banner */}
+      <button
+        onClick={() => navigate('/ideas/brasa')}
+        className="w-full mb-6 rounded-2xl border border-orange-200 bg-stone-900 p-4 flex items-center gap-4 hover:bg-stone-800 transition-colors text-left"
+      >
+        <div className="w-11 h-11 rounded-xl bg-orange-500/20 border border-orange-400/30 flex items-center justify-center shrink-0">
+          <Flame size={22} className="text-orange-400" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-white leading-tight">Jogar Brasa 🔥</p>
+          <p className="text-xs text-stone-400 mt-0.5">3 atos · perguntas que importam · conexão real</p>
+        </div>
+        <ArrowRight size={16} className="text-orange-400 shrink-0" />
+      </button>
 
       {/* Next date */}
       <div className="mb-6">

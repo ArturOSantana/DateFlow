@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Lightbulb, Pencil, Trash2, Search, Star, CalendarPlus, Shuffle, Ticket } from 'lucide-react'
+import { Plus, Lightbulb, Pencil, Trash2, Search, Star, CalendarPlus, Shuffle, Ticket, Flame } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
@@ -92,7 +92,7 @@ export default function IdeasPage() {
       </div>
 
       {/* Ações especiais */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <button
           onClick={() => navigate('/ideas/draw')}
           className="card p-3.5 flex items-center gap-3 hover:border-stone-300 hover:shadow-sm transition-all text-left"
@@ -115,6 +115,18 @@ export default function IdeasPage() {
           <div className="min-w-0">
             <p className="text-sm font-semibold text-stone-900 leading-snug">Raspadinha</p>
             <p className="text-xs text-stone-400 leading-snug">100 ideias pra descobrir</p>
+          </div>
+        </button>
+        <button
+          onClick={() => navigate('/ideas/brasa')}
+          className="card p-3.5 flex items-center gap-3 hover:border-orange-200 hover:shadow-sm transition-all text-left sm:col-span-1 col-span-1 border-orange-100 bg-orange-50/30"
+        >
+          <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+            <Flame size={16} className="text-orange-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-stone-900 leading-snug">Brasa 🔥</p>
+            <p className="text-xs text-stone-400 leading-snug">Jogo de conexão a dois</p>
           </div>
         </button>
       </div>

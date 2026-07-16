@@ -17,11 +17,14 @@ service cloud.firestore {
       allow read: if request.auth != null
                   && resource.data.withPartnerId == request.auth.uid;
 
-      // Pessoa vinculada: só pode gravar partnerNote, partnerDecision, partnerDecisionReason e updatedAt
+      // Pessoa vinculada: só pode gravar partnerNote, partnerDecision, partnerDecisionReason,
+      // partnerRating, partnerReview, partnerQuickAnswers e updatedAt
       allow update: if request.auth != null
                     && resource.data.withPartnerId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                                        .hasOnly(['partnerNote', 'partnerDecision', 'partnerDecisionReason', 'updatedAt']);
+                                        .hasOnly(['partnerNote', 'partnerDecision', 'partnerDecisionReason',
+                                                  'partnerRating', 'partnerReview', 'partnerQuickAnswers',
+                                                  'status', 'updatedAt']);
     }
 
     // ── partnerships ─────────────────────────────────────────────────────────
@@ -86,6 +89,26 @@ service cloud.firestore {
       // Parceiros com parceria aceita podem ler as preferências do dono
       // (verificação feita no cliente via getPartnership; regra permissiva para leitura
       //  pois o documento não tem referência ao parceiro, apenas ao dono)
+      allow read: if request.auth != null;
+    }
+
+    // ── brasaSessions ─────────────────────────────────────────────────────────
+    match /brasaSessions/{sessionId} {
+      // Criação: qualquer usuário autenticado (é o p1 que cria)
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.p1Uid;
+
+      // Leitura: p1 ou p2 da sessão
+      allow read: if request.auth != null
+                  && (request.auth.uid == resource.data.p1Uid
+                      || request.auth.uid == resource.data.p2Uid);
+
+      // Atualização: p1 ou p2 da sessão
+      allow update: if request.auth != null
+                    && (request.auth.uid == resource.data.p1Uid
+                        || request.auth.uid == resource.data.p2Uid);
+
+      // Entrada (join): qualquer autenticado pode ler para encontrar pelo código
       allow read: if request.auth != null;
     }
   }

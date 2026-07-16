@@ -13,6 +13,7 @@ import DateDetail from './pages/DateDetail'
 import IdeasPage from './pages/IdeasPage'
 import DrawPage from './pages/DrawPage'
 import ScratchPage from './pages/ScratchPage'
+import BrasaPage from './pages/BrasaPage'
 import HistoryPage from './pages/HistoryPage'
 import FinancePage from './pages/FinancePage'
 import ProfilePage from './pages/ProfilePage'
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/ideas/draw" element={<DrawPage />} />
         <Route path="/ideas/scratch" element={<ScratchPage />} />
+        <Route path="/ideas/brasa" element={<BrasaPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/profile" element={<ProfilePage />} />

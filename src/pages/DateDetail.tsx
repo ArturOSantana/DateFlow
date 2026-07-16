@@ -13,7 +13,8 @@ import { formatDate, buildGoogleCalendarUrl, generateId } from '../lib/utils'
 import { getPronouns } from '../lib/gender'
 import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
-import type { DateStatus, ExpenseItem, PartnerGender } from '../types'
+import type { DateStatus, ExpenseItem, PartnerGender, QuickQuestion } from '../types'
+import { POST_DATE_QUESTIONS } from '../types'
 
 const COURAGE_QUOTES = [
   { text: 'A coragem não é a ausência do medo, mas o julgamento de que algo é mais importante que ele.', author: 'Ambrose Redmoon' },
@@ -78,10 +79,12 @@ export default function DateDetail() {
   const [deleting, setDeleting] = useState(false)
   const [mapsOpen, setMapsOpen] = useState(false)
 
-  // Avaliação
+  // Avaliação do dono
   const [hoverRating, setHoverRating] = useState(0)
   const [reviewText, setReviewText] = useState(date?.review ?? '')
   const [savingReview, setSavingReview] = useState(false)
+  const [quickAnswers, setQuickAnswers] = useState<Record<string, string>>(date?.quickAnswers ?? {})
+  const [savingQuick, setSavingQuick] = useState(false)
 
   // Gasto dinâmico
   const [expenseLabel, setExpenseLabel] = useState('')
@@ -104,6 +107,16 @@ export default function DateDetail() {
     await dbApi.updateDate(date.id, { review: reviewText.trim() || undefined })
     await refreshDates()
     setSavingReview(false)
+  }
+
+  async function saveQuickAnswer(q: QuickQuestion, answer: string) {
+    if (!date) return
+    const updated = { ...quickAnswers, [q.id]: answer }
+    setQuickAnswers(updated)
+    setSavingQuick(true)
+    await dbApi.updateDate(date.id, { quickAnswers: updated })
+    await refreshDates()
+    setSavingQuick(false)
   }
 
   async function addExpense() {
@@ -580,48 +593,146 @@ export default function DateDetail() {
         </div>
       )}
 
-      {/* Avaliação — só aparece quando realizado e só para o dono */}
-      {isOwner && date.status === 'done' && (
-        <div className="card p-4 mb-5">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">Sua avaliação</p>
-          <div className="flex items-center gap-1 mb-4">
-            {[1, 2, 3, 4, 5].map(star => (
+      {/* Avaliação — só aparece quando realizado */}
+      {date.status === 'done' && (
+        <div className="card p-4 mb-5 space-y-5">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Avaliações pós-date</p>
+
+          {/* ── Avaliação do dono (só ele edita) ── */}
+          {isOwner && (
+            <div>
+              <p className="text-sm font-medium text-stone-700 mb-3">Sua avaliação</p>
+
+              {/* Estrelas */}
+              <div className="flex items-center gap-1 mb-4">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    onClick={() => saveRating(star)}
+                    className="p-0.5 transition-transform hover:scale-110"
+                    aria-label={`${star} estrela${star > 1 ? 's' : ''}`}
+                  >
+                    <Star
+                      size={26}
+                      className={`transition-colors ${
+                        star <= (hoverRating || date.rating || 0)
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-stone-200 fill-stone-100'
+                      }`}
+                    />
+                  </button>
+                ))}
+                {date.rating != null && (
+                  <span className="ml-2 text-sm text-stone-500">{date.rating}/5</span>
+                )}
+              </div>
+
+              {/* Perguntas rápidas */}
+              <div className="space-y-3 mb-4">
+                {POST_DATE_QUESTIONS.map(q => (
+                  <div key={q.id}>
+                    <p className="text-xs text-stone-500 mb-1.5">{q.text}</p>
+                    {q.options ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {q.options.map(opt => (
+                          <button
+                            key={opt}
+                            disabled={savingQuick}
+                            onClick={() => saveQuickAnswer(q, opt)}
+                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                              quickAnswers[q.id] === opt
+                                ? 'bg-stone-900 text-white border-stone-900'
+                                : 'border-stone-200 text-stone-600 hover:border-stone-400'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        className="input text-sm"
+                        placeholder="Escreva aqui…"
+                        value={quickAnswers[q.id] ?? ''}
+                        onChange={e => setQuickAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                        onBlur={e => saveQuickAnswer(q, e.target.value)}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Comentário livre */}
+              <textarea
+                className="textarea text-sm mb-2"
+                rows={3}
+                placeholder="Comentário livre sobre o date…"
+                value={reviewText}
+                onChange={e => setReviewText(e.target.value)}
+              />
               <button
-                key={star}
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                onClick={() => saveRating(star)}
-                className="p-0.5 transition-transform hover:scale-110"
-                aria-label={`${star} estrela${star > 1 ? 's' : ''}`}
+                onClick={saveReview}
+                disabled={savingReview}
+                className="btn-secondary text-xs"
               >
-                <Star
-                  size={26}
-                  className={`transition-colors ${
-                    star <= (hoverRating || date.rating || 0)
-                      ? 'fill-amber-400 text-amber-400'
-                      : 'text-stone-200 fill-stone-100'
-                  }`}
-                />
+                {savingReview ? 'Salvando…' : 'Salvar comentário'}
               </button>
-            ))}
-            {date.rating != null && (
-              <span className="ml-2 text-sm text-stone-500">{date.rating}/5</span>
-            )}
-          </div>
-          <textarea
-            className="textarea text-sm mb-2"
-            rows={3}
-            placeholder=""
-            value={reviewText}
-            onChange={e => setReviewText(e.target.value)}
-          />
-          <button
-            onClick={saveReview}
-            disabled={savingReview}
-            className="btn-secondary text-xs"
-          >
-            {savingReview ? 'Salvando…' : 'Salvar comentário'}
-          </button>
+            </div>
+          )}
+
+          {/* ── Avaliação da parceira (só leitura para o dono, editável para ela via PartnerViewPage) ── */}
+          {isOwner && date.withPartnerId && (
+            <>
+              {(date.partnerRating != null || date.partnerReview || date.partnerQuickAnswers) ? (
+                <div className="border-t border-stone-100 pt-4">
+                  <p className="text-sm font-medium text-stone-700 mb-3">
+                    Avaliação d{withPartnerGender === 'f' ? 'ela' : 'ele'}{withPartnerName ? ` (${withPartnerName})` : ''}
+                  </p>
+
+                  {/* Estrelas */}
+                  {date.partnerRating != null && (
+                    <div className="flex items-center gap-1 mb-3">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Star
+                          key={star}
+                          size={22}
+                          className={star <= date.partnerRating! ? 'fill-amber-400 text-amber-400' : 'text-stone-200 fill-stone-100'}
+                        />
+                      ))}
+                      <span className="ml-2 text-sm text-stone-500">{date.partnerRating}/5</span>
+                    </div>
+                  )}
+
+                  {/* Perguntas rápidas */}
+                  {date.partnerQuickAnswers && Object.keys(date.partnerQuickAnswers).length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {POST_DATE_QUESTIONS.filter(q => date.partnerQuickAnswers?.[q.id]).map(q => (
+                        <div key={q.id} className="flex items-start justify-between gap-2">
+                          <span className="text-xs text-stone-400 flex-shrink-0">{q.text}</span>
+                          <span className="text-xs text-stone-700 font-medium text-right">{date.partnerQuickAnswers![q.id]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Comentário */}
+                  {date.partnerReview && (
+                    <p className="text-sm text-stone-600 italic bg-stone-50 rounded-lg px-3 py-2">
+                      "{date.partnerReview}"
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="border-t border-stone-100 pt-4">
+                  <p className="text-xs text-stone-400 italic">
+                    {withPartnerName ? `${withPartnerName} ainda não avaliou esse date.` : 'A parceira/parceiro ainda não avaliou.'}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

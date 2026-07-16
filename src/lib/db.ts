@@ -10,6 +10,8 @@ import {
   query,
   where,
   orderBy,
+  onSnapshot,
+  type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { AppNotification, DateEvent, Idea, NotificationType, Partnership, UserPreferences, PreferenceCategory } from '../types'
@@ -307,4 +309,115 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
   )
   const snap = await getDocs(q)
   return snap.size
+}
+
+// ─── Brasa Sessions ───────────────────────────────────────────────────────────
+
+export interface BrasaAnswer {
+  playerId: 'p1' | 'p2'
+  value: string  // texto da resposta ou 'p1'/'p2' para votos
+  submittedAt: number
+}
+
+export interface BrasaSession {
+  id: string
+  code: string          // 4 letras — chave de entrada
+  p1Uid: string
+  p1Name: string
+  p2Uid?: string
+  p2Name?: string
+  status: 'waiting' | 'playing' | 'done'
+  /** IDs das cartas do deck atual, em ordem */
+  deckIds: string[]
+  cardIndex: number
+  act: number           // 1 | 2 | 3 | 99 (bonus)
+  brasa: number         // 0–100
+  p1Pts: number
+  p2Pts: number
+  completedCards: number
+  bonusUnlocked: boolean
+  finalChallengeId?: string
+  /** Respostas da carta atual: p1Answer e p2Answer */
+  p1Answer?: BrasaAnswer
+  p2Answer?: BrasaAnswer
+  /** Wildcard ativo no momento */
+  activeWildcardId?: string
+  doublePts: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+/** Cria uma nova sessão Brasa */
+export async function createBrasaSession(
+  p1Uid: string,
+  p1Name: string,
+  code: string,
+  deckIds: string[],
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'brasaSessions'), {
+    code: code.toUpperCase(),
+    p1Uid,
+    p1Name,
+    status: 'waiting',
+    deckIds,
+    cardIndex: 0,
+    act: 1,
+    brasa: 0,
+    p1Pts: 0,
+    p2Pts: 0,
+    completedCards: 0,
+    bonusUnlocked: false,
+    doublePts: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  } satisfies Omit<BrasaSession, 'id'>)
+  return ref.id
+}
+
+/** Busca sessão pelo código */
+export async function getBrasaSessionByCode(code: string): Promise<BrasaSession | null> {
+  const q = query(
+    collection(db, 'brasaSessions'),
+    where('code', '==', code.toUpperCase()),
+    where('status', '==', 'waiting'),
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return { id: d.id, ...d.data() } as BrasaSession
+}
+
+/** Jogador 2 entra na sessão */
+export async function joinBrasaSession(
+  sessionId: string,
+  p2Uid: string,
+  p2Name: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'brasaSessions', sessionId), {
+    p2Uid,
+    p2Name,
+    status: 'playing',
+    updatedAt: Date.now(),
+  })
+}
+
+/** Atualiza campos arbitrários da sessão */
+export async function updateBrasaSession(
+  sessionId: string,
+  data: Partial<Omit<BrasaSession, 'id' | 'createdAt'>>,
+): Promise<void> {
+  await updateDoc(doc(db, 'brasaSessions', sessionId), {
+    ...data,
+    updatedAt: Date.now(),
+  })
+}
+
+/** Assina a sessão em tempo real (onSnapshot) */
+export function subscribeBrasaSession(
+  sessionId: string,
+  callback: (session: BrasaSession) => void,
+): Unsubscribe {
+  return onSnapshot(doc(db, 'brasaSessions', sessionId), snap => {
+    if (snap.exists()) callback({ id: snap.id, ...snap.data() } as BrasaSession)
+  })
 }

@@ -42,6 +42,14 @@ export interface DateEvent {
   rating?: number
   /** Comentário/review do date */
   review?: string
+  /** Respostas rápidas do dono (chave = id da pergunta, valor = resposta) */
+  quickAnswers?: Record<string, string>
+  /** Avaliação de 1 a 5 estrelas da parceira/parceiro */
+  partnerRating?: number
+  /** Comentário/review da parceira/parceiro */
+  partnerReview?: string
+  /** Respostas rápidas da parceira/parceiro (chave = id da pergunta, valor = resposta) */
+  partnerQuickAnswers?: Record<string, string>
   /**
    * UID de quem vai participar do date (a outra pessoa com acesso).
    * Só aparecem para ela os dates onde withPartnerId === seu UID.
@@ -178,3 +186,19 @@ export interface UserPreferences {
   ownerGender?: PartnerGender
   updatedAt: number
 }
+
+// ─── Perguntas rápidas pós-date ───────────────────────────────────────────────
+
+export interface QuickQuestion {
+  id: string
+  text: string
+  /** Opções de resposta (se undefined, é campo de texto livre) */
+  options?: string[]
+}
+
+export const POST_DATE_QUESTIONS: QuickQuestion[] = [
+  { id: 'vibe',    text: 'Como foi a vibe geral?',        options: ['🔥 Incrível', '😊 Boa', '😐 Ok', '😕 Estranha'] },
+  { id: 'repeat',  text: 'Repetiria esse programa?',       options: ['Com certeza!', 'Talvez', 'Não'] },
+  { id: 'feeling', text: 'Como você se sentiu?',           options: ['Especial', 'Feliz', 'Tranquilo/a', 'Um pouco ansioso/a'] },
+  { id: 'moment',  text: 'Qual foi o melhor momento?',    options: undefined },
+]

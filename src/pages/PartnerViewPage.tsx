@@ -9,7 +9,8 @@ import * as dbApi from '../lib/db'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate, buildGoogleCalendarUrl } from '../lib/utils'
 import { getOwnerPronouns } from '../lib/gender'
-import type { DateEvent, PartnerGender, Partnership, PreferenceCategory } from '../types'
+import type { DateEvent, PartnerGender, Partnership, PreferenceCategory, QuickQuestion } from '../types'
+import { POST_DATE_QUESTIONS } from '../types'
 import StatusBadge from '../components/StatusBadge'
 
 // ─── Frases motivacionais para aceitar o convite ─────────────────────────────
@@ -240,21 +241,24 @@ export default function PartnerViewPage() {
     // Muda status para confirmed se aceito, mantém waiting_reply se recusado
     const newStatus = decision === 'accepted' ? 'confirmed' : targetDate.status
 
-    await dbApi.updateDate(dateId, {
+    const decisionUpdate: Partial<DateEvent> = {
       partnerDecision: decision,
-      partnerDecisionReason: reason || undefined,
       status: newStatus,
-    })
+    }
+    if (reason) decisionUpdate.partnerDecisionReason = reason
+
+    await dbApi.updateDate(dateId, decisionUpdate)
 
     // Cria notificação para o dono do date
-    await dbApi.createNotification({
+    const notifData: Parameters<typeof dbApi.createNotification>[0] = {
       toUserId: targetDate.userId,
       type: decision === 'accepted' ? 'date_accepted' : 'date_declined',
       dateId,
       dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,
       fromName: user?.displayName ?? user?.email ?? 'Parceiro(a)',
-      reason: reason || undefined,
-    })
+    }
+    if (reason) notifData.reason = reason
+    await dbApi.createNotification(notifData)
 
     // Atualiza localmente
     setDates(prev => prev.map(d =>
@@ -267,10 +271,33 @@ export default function PartnerViewPage() {
   async function saveNote(dateId: string) {
     const note = (notes[dateId] ?? '').trim()
     setSavingNote(prev => ({ ...prev, [dateId]: true }))
-    await dbApi.updateDate(dateId, { partnerNote: note || undefined })
+    const noteUpdate: Partial<DateEvent> = {}
+    if (note) noteUpdate.partnerNote = note
+    await dbApi.updateDate(dateId, noteUpdate)
     setSavingNote(prev => ({ ...prev, [dateId]: false }))
     setSavedNote(prev => ({ ...prev, [dateId]: true }))
     setTimeout(() => setSavedNote(prev => ({ ...prev, [dateId]: false })), 2000)
+  }
+
+  async function savePartnerRating(dateId: string, stars: number) {
+    await dbApi.updateDate(dateId, { partnerRating: stars })
+    setDates(prev => prev.map(d => d.id === dateId ? { ...d, partnerRating: stars } : d))
+  }
+
+  async function savePartnerReview(dateId: string, text: string) {
+    const trimmed = text.trim()
+    const reviewUpdate: Partial<DateEvent> = {}
+    if (trimmed) reviewUpdate.partnerReview = trimmed
+    await dbApi.updateDate(dateId, reviewUpdate)
+    setDates(prev => prev.map(d => d.id === dateId ? { ...d, partnerReview: text.trim() || undefined } : d))
+  }
+
+  async function savePartnerQuickAnswer(dateId: string, qId: string, answer: string) {
+    const target = dates.find(d => d.id === dateId)
+    if (!target) return
+    const updated = { ...(target.partnerQuickAnswers ?? {}), [qId]: answer }
+    await dbApi.updateDate(dateId, { partnerQuickAnswers: updated })
+    setDates(prev => prev.map(d => d.id === dateId ? { ...d, partnerQuickAnswers: updated } : d))
   }
 
   if (loading) {
@@ -479,6 +506,9 @@ export default function PartnerViewPage() {
                 saving={!!savingNote[d.id]}
                 saved={!!savedNote[d.id]}
                 onDecide={(decision, reason) => decideDate(d.id, decision, reason)}
+                onSavePartnerRating={stars => savePartnerRating(d.id, stars)}
+                onSavePartnerReview={text => savePartnerReview(d.id, text)}
+                onSavePartnerQuickAnswer={(q, answer) => savePartnerQuickAnswer(d.id, q.id, answer)}
               />
             ))}
           </div>
@@ -502,6 +532,9 @@ export default function PartnerViewPage() {
                 saving={!!savingNote[d.id]}
                 saved={!!savedNote[d.id]}
                 onDecide={(decision, reason) => decideDate(d.id, decision, reason)}
+                onSavePartnerRating={stars => savePartnerRating(d.id, stars)}
+                onSavePartnerReview={text => savePartnerReview(d.id, text)}
+                onSavePartnerQuickAnswer={(q, answer) => savePartnerQuickAnswer(d.id, q.id, answer)}
               />
             ))}
           </div>
@@ -523,6 +556,9 @@ interface DateCardProps {
   saving: boolean
   saved: boolean
   onDecide: (decision: 'accepted' | 'declined', reason?: string) => Promise<void>
+  onSavePartnerRating: (stars: number) => Promise<void>
+  onSavePartnerReview: (text: string) => Promise<void>
+  onSavePartnerQuickAnswer: (q: QuickQuestion, answer: string) => Promise<void>
 }
 
 function getIncentiveQuote(id: string) {
@@ -530,7 +566,8 @@ function getIncentiveQuote(id: string) {
   return LOVE_QUOTES[idx]
 }
 
-function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNote, saving, saved, onDecide }: DateCardProps) {
+function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNote, saving, saved, onDecide,
+  onSavePartnerRating, onSavePartnerReview, onSavePartnerQuickAnswer }: DateCardProps) {
   const gcUrl = buildGoogleCalendarUrl(date.title, date.date, date.time, date.location, date.description)
   const doneTasks = date.checklist.filter(t => t.done).length
   const totalTasks = date.checklist.length
@@ -541,11 +578,36 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
   const [declineReason, setDeclineReason] = useState('')
   const [deciding, setDeciding] = useState(false)
 
+  // Estado local para avaliação da parceira
+  const [partnerHoverRating, setPartnerHoverRating] = useState(0)
+  const [partnerReviewText, setPartnerReviewText] = useState(date.partnerReview ?? '')
+  const [partnerQuickAnswers, setPartnerQuickAnswers] = useState<Record<string, string>>(date.partnerQuickAnswers ?? {})
+  const [savingPartnerReview, setSavingPartnerReview] = useState(false)
+  const [savingPartnerQuick, setSavingPartnerQuick] = useState(false)
+
   async function handleDecide(decision: 'accepted' | 'declined') {
     setDeciding(true)
     await onDecide(decision, decision === 'declined' ? declineReason.trim() : undefined)
     setDeciding(false)
     setShowDeclineForm(false)
+  }
+
+  async function handlePartnerRating(stars: number) {
+    await onSavePartnerRating(stars)
+  }
+
+  async function handlePartnerQuickAnswer(q: QuickQuestion, answer: string) {
+    const updated = { ...partnerQuickAnswers, [q.id]: answer }
+    setPartnerQuickAnswers(updated)
+    setSavingPartnerQuick(true)
+    await onSavePartnerQuickAnswer(q, answer)
+    setSavingPartnerQuick(false)
+  }
+
+  async function handlePartnerReview() {
+    setSavingPartnerReview(true)
+    await onSavePartnerReview(partnerReviewText)
+    setSavingPartnerReview(false)
   }
 
   return (
@@ -660,25 +722,126 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             </div>
           )}
 
-          {/* Avaliação — oculta quando é surpresa */}
-          {!date.hiddenFromPartner && date.rating != null && (
-            <div>
-              <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5">Avaliação</p>
-              <div className="flex items-center gap-1 mb-1.5">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <Star
-                    key={star}
-                    size={16}
-                    className={star <= date.rating! ? 'fill-amber-400 text-amber-400' : 'text-stone-200 fill-stone-100'}
-                  />
-                ))}
-                <span className="ml-1 text-xs text-stone-500">{date.rating}/5</span>
-              </div>
-              {date.review && (
-                <p className="text-sm text-stone-600 italic bg-stone-50 rounded-lg px-3 py-2">
-                  "{date.review}"
-                </p>
+          {/* ── Avaliações pós-date — quando realizado ── */}
+          {date.status === 'done' && (
+            <div className="border-t border-stone-100 pt-3 space-y-4">
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Avaliações pós-date</p>
+
+              {/* Avaliação do dono (só leitura) */}
+              {(date.rating != null || date.review || (date.quickAnswers && Object.keys(date.quickAnswers).length > 0)) && (
+                <div>
+                  <p className="text-xs text-stone-400 mb-2">Avaliação de quem planejou</p>
+                  {date.rating != null && (
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Star
+                          key={star}
+                          size={16}
+                          className={star <= date.rating! ? 'fill-amber-400 text-amber-400' : 'text-stone-200 fill-stone-100'}
+                        />
+                      ))}
+                      <span className="ml-1 text-xs text-stone-500">{date.rating}/5</span>
+                    </div>
+                  )}
+                  {date.quickAnswers && Object.keys(date.quickAnswers).length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {POST_DATE_QUESTIONS.filter(q => date.quickAnswers?.[q.id]).map(q => (
+                        <div key={q.id} className="flex items-start justify-between gap-2">
+                          <span className="text-xs text-stone-400 flex-shrink-0">{q.text}</span>
+                          <span className="text-xs text-stone-700 font-medium text-right">{date.quickAnswers![q.id]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {date.review && (
+                    <p className="text-sm text-stone-600 italic bg-stone-50 rounded-lg px-3 py-2">
+                      "{date.review}"
+                    </p>
+                  )}
+                </div>
               )}
+
+              {/* Avaliação da parceira (editável) */}
+              <div>
+                <p className="text-xs text-stone-400 mb-2">Sua avaliação</p>
+
+                {/* Estrelas */}
+                <div className="flex items-center gap-1 mb-3">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      onMouseEnter={() => setPartnerHoverRating(star)}
+                      onMouseLeave={() => setPartnerHoverRating(0)}
+                      onClick={() => handlePartnerRating(star)}
+                      className="p-0.5 transition-transform hover:scale-110"
+                      aria-label={`${star} estrela${star > 1 ? 's' : ''}`}
+                    >
+                      <Star
+                        size={22}
+                        className={`transition-colors ${
+                          star <= (partnerHoverRating || date.partnerRating || 0)
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-stone-200 fill-stone-100'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  {date.partnerRating != null && (
+                    <span className="ml-2 text-xs text-stone-500">{date.partnerRating}/5</span>
+                  )}
+                </div>
+
+                {/* Perguntas rápidas */}
+                <div className="space-y-3 mb-3">
+                  {POST_DATE_QUESTIONS.map(q => (
+                    <div key={q.id}>
+                      <p className="text-xs text-stone-500 mb-1.5">{q.text}</p>
+                      {q.options ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {q.options.map(opt => (
+                            <button
+                              key={opt}
+                              disabled={savingPartnerQuick}
+                              onClick={() => handlePartnerQuickAnswer(q, opt)}
+                              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                                partnerQuickAnswers[q.id] === opt
+                                  ? 'bg-stone-900 text-white border-stone-900'
+                                  : 'border-stone-200 text-stone-600 hover:border-stone-400'
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <input
+                          className="input text-sm"
+                          placeholder="Escreva aqui…"
+                          value={partnerQuickAnswers[q.id] ?? ''}
+                          onChange={e => setPartnerQuickAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                          onBlur={e => handlePartnerQuickAnswer(q, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Comentário livre */}
+                <textarea
+                  className="textarea text-sm mb-2"
+                  rows={3}
+                  placeholder="Comentário sobre o date…"
+                  value={partnerReviewText}
+                  onChange={e => setPartnerReviewText(e.target.value)}
+                />
+                <button
+                  onClick={handlePartnerReview}
+                  disabled={savingPartnerReview}
+                  className="btn-secondary text-xs"
+                >
+                  {savingPartnerReview ? 'Salvando…' : 'Salvar comentário'}
+                </button>
+              </div>
             </div>
           )}
 
