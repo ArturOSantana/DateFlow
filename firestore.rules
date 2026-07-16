@@ -59,5 +59,17 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.auth.uid == request.resource.data.userId;
     }
+
+    // ── userPreferences ───────────────────────────────────────────────────────
+    match /userPreferences/{userId} {
+      // Dono: lê e escreve suas próprias preferências
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+
+      // Parceiros com parceria aceita podem ler as preferências do dono
+      // (verificação feita no cliente via getPartnership; regra permissiva para leitura
+      //  pois o documento não tem referência ao parceiro, apenas ao dono)
+      allow read: if request.auth != null;
+    }
   }
 }

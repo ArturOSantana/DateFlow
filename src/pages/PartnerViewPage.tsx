@@ -3,13 +3,125 @@ import { useParams } from 'react-router-dom'
 import {
   Calendar, Clock, MapPin, CheckCircle2, Circle,
   CalendarPlus, Star, MessageSquare, ChevronDown, ChevronUp, User,
+  Heart, Utensils, Check, Sparkles, Lightbulb, EyeOff,
 } from 'lucide-react'
 import * as dbApi from '../lib/db'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate, buildGoogleCalendarUrl } from '../lib/utils'
-import type { DateEvent, Partnership } from '../types'
+import type { DateEvent, Partnership, PreferenceCategory } from '../types'
 import StatusBadge from '../components/StatusBadge'
 
+// ─── Frases motivacionais para aceitar o convite ─────────────────────────────
+const LOVE_QUOTES = [
+  { text: 'A coragem de amar é o começo de tudo.', author: 'Victor Hugo' },
+  { text: 'O amor é a única realidade e não é um mero sentimento. É a verdade última que está no coração da criação.', author: 'Rabindranath Tagore' },
+  { text: 'Quem ama, tem sempre algo a dizer.', author: 'Platão' },
+  { text: 'O coração tem razões que a própria razão desconhece.', author: 'Blaise Pascal' },
+  { text: 'Amar é encontrar a própria felicidade na felicidade do outro.', author: 'Gottfried Leibniz' },
+  { text: 'A vida sem amor é como uma árvore sem flores nem frutos.', author: 'Khalil Gibran' },
+  { text: 'Uma chance é tudo que precisamos para mudar para sempre.', author: 'C.S. Lewis' },
+  { text: 'O maior risco na vida é não arriscar nada.', author: 'Leo Buscaglia' },
+  { text: 'O amor não olha com os olhos, mas com a mente.', author: 'William Shakespeare' },
+  { text: 'Que esta seja a hora em que ousamos ter esperança.', author: 'Santo Agostinho' },
+  { text: 'Não tenhas medo de tentar, mas teme não tentar.', author: 'Provérbio popular' },
+  { text: 'Abrir o coração é o primeiro passo para viver de verdade.', author: 'Madre Teresa de Calcutá' },
+  { text: 'O amor é paciente, é bondoso; não é invejoso, não se vangloria.', author: '1 Coríntios 13:4' },
+  { text: 'Aquele que não arrisca, não vive o amor em sua plenitude.', author: 'Paulo Coelho' },
+  { text: 'É melhor ter amado e perdido do que nunca ter amado.', author: 'Alfred Lord Tennyson' },
+]
+
+function getRandomQuotes(n = 3) {
+  const shuffled = [...LOVE_QUOTES].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, n)
+}
+
+// ─── Card de preferências da parceira ────────────────────────────────────────
+function PrefsCard({ prefs }: { prefs: PreferenceCategory }) {
+  const hasContent =
+    prefs.activitiesLoves.length > 0 ||
+    prefs.placesLoves.length > 0 ||
+    prefs.placesNever.length > 0 ||
+    prefs.placesTolerate.length > 0 ||
+    prefs.foodLoves.length > 0 ||
+    prefs.foodNever.length > 0 ||
+    prefs.foodTolerate.length > 0 ||
+    prefs.otherNotes.trim().length > 0
+
+  if (!hasContent) return null
+
+  function TagGroup({ items, color, label }: { items: string[]; color: string; label: string }) {
+    if (items.length === 0) return null
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-stone-500">{label}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((item, i) => (
+            <span key={i} className={`text-xs px-2 py-0.5 rounded-full ${color}`}>{item}</span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Heart size={14} className="text-rose-400" />
+        <p className="text-sm font-semibold text-stone-900">Preferências dela</p>
+      </div>
+
+      <div className="space-y-3">
+        {/* Atividades */}
+        {prefs.activitiesLoves.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+              <Heart size={10} className="text-rose-300" /> Atividades
+            </p>
+            <TagGroup items={prefs.activitiesLoves} color="bg-rose-50 text-rose-700 border border-rose-100" label="Adora fazer" />
+          </div>
+        )}
+
+        {/* Lugares */}
+        {(prefs.placesLoves.length > 0 || prefs.placesNever.length > 0 || prefs.placesTolerate.length > 0) && (
+          <div>
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+              <MapPin size={10} className="text-violet-400" /> Lugares
+            </p>
+            <div className="space-y-1.5">
+              <TagGroup items={prefs.placesLoves} color="bg-violet-50 text-violet-700 border border-violet-100" label="Adora ir" />
+              <TagGroup items={prefs.placesNever} color="bg-red-50 text-red-700 border border-red-100" label="Não vai de jeito nenhum" />
+              <TagGroup items={prefs.placesTolerate} color="bg-amber-50 text-amber-700 border border-amber-100" label="Não gosta mas vai" />
+            </div>
+          </div>
+        )}
+
+        {/* Comida */}
+        {(prefs.foodLoves.length > 0 || prefs.foodNever.length > 0 || prefs.foodTolerate.length > 0) && (
+          <div>
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+              <Utensils size={10} className="text-emerald-500" /> Comida
+            </p>
+            <div className="space-y-1.5">
+              <TagGroup items={prefs.foodLoves} color="bg-emerald-50 text-emerald-700 border border-emerald-100" label="Adora comer" />
+              <TagGroup items={prefs.foodNever} color="bg-red-50 text-red-700 border border-red-100" label="Não come de jeito nenhum" />
+              <TagGroup items={prefs.foodTolerate} color="bg-amber-50 text-amber-700 border border-amber-100" label="Come com exceção" />
+            </div>
+          </div>
+        )}
+
+        {/* Outros */}
+        {prefs.otherNotes.trim() && (
+          <div>
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">Outras observações</p>
+            <p className="text-sm text-stone-600 bg-stone-50 rounded-lg px-3 py-2 whitespace-pre-wrap">{prefs.otherNotes}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
 export default function PartnerViewPage() {
   const { partnerId } = useParams<{ partnerId: string }>()
   const { user } = useAuth()
@@ -20,7 +132,16 @@ export default function PartnerViewPage() {
   const [notAllowed, setNotAllowed] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  // Observações por date (controladas localmente antes de salvar)
+  // Para convite pendente que a usuária pode aceitar aqui
+  const [pendingPartnership, setPendingPartnership] = useState<Partnership | null>(null)
+  const [acceptingInvite, setAcceptingInvite] = useState(false)
+  const [inviteAccepted, setInviteAccepted] = useState(false)
+  const [quotes] = useState(() => getRandomQuotes(3))
+
+  // Preferências do dono
+  const [ownerPrefs, setOwnerPrefs] = useState<PreferenceCategory | null>(null)
+
+  // Observações por date
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [savingNote, setSavingNote] = useState<Record<string, boolean>>({})
   const [savedNote, setSavedNote] = useState<Record<string, boolean>>({})
@@ -29,23 +150,61 @@ export default function PartnerViewPage() {
     if (!user || !partnerId) return
 
     dbApi.getPartnership(user.uid, partnerId).then(async (p: Partnership | null) => {
+      // Convite pendente: a usuária é a destinatária mas ainda não aceitou
+      if (p && p.status === 'pending' &&
+        (p.recipientEmail === user.email?.toLowerCase() || p.recipientId === user.uid)) {
+        setPendingPartnership(p)
+        setLoading(false)
+        return
+      }
+
       if (!p || p.status !== 'accepted') {
         setNotAllowed(true)
         setLoading(false)
         return
       }
-      // Descobre o nome do dono (quem não é o usuário atual)
-      const name = p.requesterId === user.uid ? p.recipientName : p.requesterName
-      setOwnerName(name || '')
 
-      const data = await dbApi.getDatesByOwnerForViewer(partnerId, user.uid)
-      setDates(data)
-      const initial: Record<string, string> = {}
-      data.forEach(d => { if (d.partnerNote) initial[d.id] = d.partnerNote })
-      setNotes(initial)
-      setLoading(false)
+      await loadData(p)
     })
   }, [user, partnerId])
+
+  async function loadData(p: Partnership) {
+    if (!user || !partnerId) return
+    const name = p.requesterId === user.uid ? p.recipientName : p.requesterName
+    setOwnerName(name || '')
+
+    const data = await dbApi.getDatesByOwnerForViewer(partnerId, user.uid)
+    setDates(data)
+    const initial: Record<string, string> = {}
+    data.forEach(d => { if (d.partnerNote) initial[d.id] = d.partnerNote })
+    setNotes(initial)
+
+    // Busca preferências do dono
+    const prefs = await dbApi.getUserPreferences(partnerId)
+    setOwnerPrefs(prefs)
+
+    setLoading(false)
+  }
+
+  async function acceptInvite() {
+    if (!user || !pendingPartnership) return
+    setAcceptingInvite(true)
+    await dbApi.updatePartnership(pendingPartnership.id, {
+      status: 'accepted',
+      recipientId: user.uid,
+      recipientName: user.displayName ?? 'Usuária',
+      recipientPhoto: user.photoURL ?? null,
+    })
+    setAcceptingInvite(false)
+    setInviteAccepted(true)
+
+    // Recarrega dados agora com parceria aceita
+    const updated = await dbApi.getPartnership(user.uid, partnerId!)
+    if (updated) {
+      setPendingPartnership(null)
+      await loadData(updated)
+    }
+  }
 
   async function saveNote(dateId: string) {
     const note = (notes[dateId] ?? '').trim()
@@ -64,6 +223,57 @@ export default function PartnerViewPage() {
     )
   }
 
+  // ── Convite pendente: mostrar frases e botão de aceitar ──────────────────
+  if (pendingPartnership && !inviteAccepted) {
+    const senderName = pendingPartnership.requesterName || pendingPartnership.requesterEmail
+    return (
+      <div className="p-5 md:p-7 max-w-lg">
+        {/* Cabeçalho */}
+        <div className="card p-5 mb-5 text-center">
+          {pendingPartnership.requesterPhoto ? (
+            <img
+              src={pendingPartnership.requesterPhoto}
+              alt=""
+              className="w-14 h-14 rounded-full mx-auto mb-3"
+            />
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-stone-200 flex items-center justify-center mx-auto mb-3">
+              <User size={22} className="text-stone-500" />
+            </div>
+          )}
+          <p className="text-sm font-semibold text-stone-900 mb-1">
+            {senderName} quer te planejar um date ✨
+          </p>
+          <p className="text-xs text-stone-500 mb-4">
+            Você recebeu um convite de parceria. Aceite para ver os dates planejados para você.
+          </p>
+          <button
+            onClick={acceptInvite}
+            disabled={acceptingInvite}
+            className="btn-primary w-full justify-center"
+          >
+            <Check size={15} />
+            {acceptingInvite ? 'Aceitando…' : 'Aceitar convite'}
+          </button>
+        </div>
+
+        {/* Frases motivacionais */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles size={13} className="text-amber-400" />
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Uma pitada de inspiração</p>
+          </div>
+          {quotes.map((q, i) => (
+            <div key={i} className="card p-4 border-l-2 border-rose-200">
+              <p className="text-sm text-stone-700 italic mb-1.5">"{q.text}"</p>
+              <p className="text-xs text-stone-400 text-right">— {q.author}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   if (notAllowed) {
     return (
       <div className="p-7 max-w-lg">
@@ -78,8 +288,11 @@ export default function PartnerViewPage() {
     )
   }
 
-  const upcoming = dates.filter(d => !['done', 'cancelled'].includes(d.status))
-  const history  = dates.filter(d => ['done', 'cancelled'].includes(d.status))
+  // Dates visíveis (não ocultos) e ocultos (só dicas)
+  const visibleDates  = dates.filter(d => !d.hiddenFromPartner)
+  const hiddenDates   = dates.filter(d => d.hiddenFromPartner)
+  const upcoming = visibleDates.filter(d => !['done', 'cancelled'].includes(d.status))
+  const history  = visibleDates.filter(d => ['done', 'cancelled'].includes(d.status))
 
   return (
     <div className="p-5 md:p-7 max-w-xl">
@@ -93,7 +306,48 @@ export default function PartnerViewPage() {
         Você pode ver os detalhes e adicionar observações em cada date.
       </p>
 
-      {dates.length === 0 && (
+      {/* Card de preferências do dono */}
+      {ownerPrefs && <PrefsCard prefs={ownerPrefs} />}
+
+      {/* ── Dicas de dates ocultos ── */}
+      {hiddenDates.length > 0 && (
+        <div className="mb-6">
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <EyeOff size={12} className="text-violet-400" />
+            Surpresas a caminho
+          </p>
+          <div className="space-y-2">
+            {hiddenDates.map(d => (
+              <div key={d.id} className="card p-4 border-l-2 border-violet-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                    <EyeOff size={13} className="text-violet-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-stone-800">Algo especial está sendo preparado para você ✨</p>
+                    <p className="text-xs text-stone-400">{d.date ? `${d.date.split('-').reverse().join('/')}` : 'Data a confirmar'} {d.time ? `às ${d.time}` : ''}</p>
+                  </div>
+                </div>
+                {(d.partnerHints ?? []).length > 0 && (
+                  <div className="space-y-1 mt-2 pt-2 border-t border-stone-100">
+                    <p className="text-xs text-stone-400 mb-1 flex items-center gap-1">
+                      <Lightbulb size={11} className="text-amber-400" /> Dicas:
+                    </p>
+                    {(d.partnerHints ?? []).map((hint, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm text-stone-700">
+                        <span className="text-amber-400 mt-0.5">•</span>
+                        <span>{hint}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {visibleDates.length === 0 && hiddenDates.length === 0 && (
         <div className="card p-6 text-center">
           <p className="text-sm text-stone-500">Nenhum date planejado ainda.</p>
         </div>
@@ -104,7 +358,19 @@ export default function PartnerViewPage() {
         <section className="mb-6">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">Próximos</p>
           <div className="space-y-3">
-            {upcoming.map(d => <DateCard key={d.id} date={d} expanded={expandedId === d.id} onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)} noteValue={notes[d.id] ?? ''} onNoteChange={v => setNotes(prev => ({ ...prev, [d.id]: v }))} onSaveNote={() => saveNote(d.id)} saving={!!savingNote[d.id]} saved={!!savedNote[d.id]} />)}
+            {upcoming.map(d => (
+              <DateCard
+                key={d.id}
+                date={d}
+                expanded={expandedId === d.id}
+                onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
+                noteValue={notes[d.id] ?? ''}
+                onNoteChange={v => setNotes(prev => ({ ...prev, [d.id]: v }))}
+                onSaveNote={() => saveNote(d.id)}
+                saving={!!savingNote[d.id]}
+                saved={!!savedNote[d.id]}
+              />
+            ))}
           </div>
         </section>
       )}
@@ -114,7 +380,19 @@ export default function PartnerViewPage() {
         <section>
           <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">Histórico</p>
           <div className="space-y-3">
-            {history.map(d => <DateCard key={d.id} date={d} expanded={expandedId === d.id} onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)} noteValue={notes[d.id] ?? ''} onNoteChange={v => setNotes(prev => ({ ...prev, [d.id]: v }))} onSaveNote={() => saveNote(d.id)} saving={!!savingNote[d.id]} saved={!!savedNote[d.id]} />)}
+            {history.map(d => (
+              <DateCard
+                key={d.id}
+                date={d}
+                expanded={expandedId === d.id}
+                onToggle={() => setExpandedId(expandedId === d.id ? null : d.id)}
+                noteValue={notes[d.id] ?? ''}
+                onNoteChange={v => setNotes(prev => ({ ...prev, [d.id]: v }))}
+                onSaveNote={() => saveNote(d.id)}
+                saving={!!savingNote[d.id]}
+                saved={!!savedNote[d.id]}
+              />
+            ))}
           </div>
         </section>
       )}

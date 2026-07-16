@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, DollarSign } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, DollarSign, EyeOff, Eye, Lightbulb, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
 import * as dbApi from '../lib/db'
@@ -18,6 +18,8 @@ const EMPTY: Omit<DateEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
   tags: [],
   budget: undefined,
   actualCost: undefined,
+  hiddenFromPartner: false,
+  partnerHints: [],
 }
 
 export default function DateForm() {
@@ -56,6 +58,8 @@ export default function DateForm() {
           rating: existing.rating,
           review: existing.review,
           withPartnerId: existing.withPartnerId,
+          hiddenFromPartner: existing.hiddenFromPartner ?? false,
+          partnerHints: existing.partnerHints ?? [],
         }
       : {
           ...EMPTY,
@@ -66,6 +70,7 @@ export default function DateForm() {
   )
 
   const [newTask, setNewTask] = useState('')
+  const [newHint, setNewHint] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -92,10 +97,25 @@ export default function DateForm() {
     set('checklist', form.checklist.filter(t => t.id !== taskId))
   }
 
+  function addHint() {
+    const text = newHint.trim()
+    if (!text) return
+    set('partnerHints', [...(form.partnerHints ?? []), text])
+    setNewHint('')
+  }
+
+  function removeHint(i: number) {
+    set('partnerHints', (form.partnerHints ?? []).filter((_, idx) => idx !== i))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.title.trim() || !form.date || !form.time) {
       setError('Título, data e horário são obrigatórios.')
+      return
+    }
+    if (form.hiddenFromPartner && form.withPartnerId && (!form.partnerHints || form.partnerHints.length === 0)) {
+      setError('Adicione ao menos uma dica para a parceira, já que o date está oculto para ela.')
       return
     }
     setSaving(true)
@@ -219,31 +239,101 @@ export default function DateForm() {
           const uid = p.requesterId === user!.uid ? p.recipientId : p.requesterId
           return !!uid
         }).length > 0 && (
-          <div>
-            <label className="label">Compartilhar com parceira</label>
-            <p className="text-xs text-stone-400 mb-1.5">
-              Ela só verá esse date se você marcar o nome dela aqui.
-            </p>
-            <select
-              className="input"
-              value={form.withPartnerId ?? ''}
-              onChange={e => set('withPartnerId', e.target.value || undefined)}
-            >
-              <option value="">Não compartilhar (só você vê)</option>
-              {partnerships
-                .map(p => {
-                  const isMe = p.requesterId === user!.uid
-                  const name  = isMe ? p.recipientName  : p.requesterName
-                  const email = isMe ? p.recipientEmail : p.requesterEmail
-                  const uid   = isMe ? p.recipientId    : p.requesterId
-                  return { uid, label: name || email }
-                })
-                .filter(({ uid }) => !!uid)
-                .map(({ uid, label }) => (
-                  <option key={uid} value={uid}>{label}</option>
-                ))
-              }
-            </select>
+          <div className="space-y-3">
+            <div>
+              <label className="label">Compartilhar com parceira</label>
+              <p className="text-xs text-stone-400 mb-1.5">
+                Ela só verá esse date se você marcar o nome dela aqui.
+              </p>
+              <select
+                className="input"
+                value={form.withPartnerId ?? ''}
+                onChange={e => set('withPartnerId', e.target.value || undefined)}
+              >
+                <option value="">Não compartilhar (só você vê)</option>
+                {partnerships
+                  .map(p => {
+                    const isMe = p.requesterId === user!.uid
+                    const name  = isMe ? p.recipientName  : p.requesterName
+                    const email = isMe ? p.recipientEmail : p.requesterEmail
+                    const uid   = isMe ? p.recipientId    : p.requesterId
+                    return { uid, label: name || email }
+                  })
+                  .filter(({ uid }) => !!uid)
+                  .map(({ uid, label }) => (
+                    <option key={uid} value={uid}>{label}</option>
+                  ))
+                }
+              </select>
+            </div>
+
+            {/* Opção de ocultar detalhes — só disponível quando há parceira selecionada */}
+            {form.withPartnerId && (
+              <div
+                className={`flex items-start gap-3 rounded-xl px-3 py-3 border cursor-pointer select-none transition-colors ${
+                  form.hiddenFromPartner
+                    ? 'border-violet-200 bg-violet-50'
+                    : 'border-stone-200 bg-stone-50'
+                }`}
+                onClick={() => set('hiddenFromPartner', !form.hiddenFromPartner)}
+              >
+                <div className={`mt-0.5 shrink-0 w-8 h-5 rounded-full relative transition-colors ${form.hiddenFromPartner ? 'bg-violet-500' : 'bg-stone-300'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.hiddenFromPartner ? 'left-3.5' : 'left-0.5'}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-stone-800 flex items-center gap-1.5">
+                    {form.hiddenFromPartner
+                      ? <><EyeOff size={13} className="text-violet-500" /> Date oculto para ela</>
+                      : <><Eye size={13} className="text-stone-400" /> Ela vê os detalhes</>
+                    }
+                  </p>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    {form.hiddenFromPartner
+                      ? 'Ela não vê título, local nem descrição — só as dicas abaixo.'
+                      : 'Ela pode ver todos os detalhes desse date.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Dicas — obrigatórias se oculto, opcionais se visível */}
+            {form.withPartnerId && (
+              <div>
+                <label className="label flex items-center gap-1.5">
+                  <Lightbulb size={13} className="text-amber-400" />
+                  Dicas para ela
+                  {form.hiddenFromPartner && <span className="text-red-400 text-xs">(obrigatório)</span>}
+                </label>
+                <p className="text-xs text-stone-400 mb-2">
+                  {form.hiddenFromPartner
+                    ? 'Já que o date está oculto, deixe dicas para ela saber o que preparar ou esperar.'
+                    : 'Opcional: deixe dicas extras para ela sobre o date.'}
+                </p>
+                <div className="space-y-1.5 mb-2">
+                  {(form.partnerHints ?? []).map((hint, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                      <Lightbulb size={12} className="text-amber-400 shrink-0" />
+                      <span className="text-sm text-stone-700 flex-1">{hint}</span>
+                      <button type="button" onClick={() => removeHint(i)} className="text-stone-400 hover:text-red-500">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 text-sm"
+                    placeholder="Ex: Vista algo confortável…"
+                    value={newHint}
+                    onChange={e => setNewHint(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addHint())}
+                  />
+                  <button type="button" onClick={addHint} className="btn-secondary shrink-0">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

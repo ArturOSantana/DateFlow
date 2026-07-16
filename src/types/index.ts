@@ -49,6 +49,13 @@ export interface DateEvent {
   withPartnerId?: string
   /** Observações adicionadas pela parceira no link de parceira */
   partnerNote?: string
+  /**
+   * Quando true, os detalhes do date ficam ocultos para a parceira.
+   * Ela só vê as dicas (partnerHints). As dicas são obrigatórias se oculto.
+   */
+  hiddenFromPartner?: boolean
+  /** Dicas sobre o date que o criador deixa para a parceira */
+  partnerHints?: string[]
   createdAt: number
   updatedAt: number
 }
@@ -99,3 +106,31 @@ export const IDEA_CATEGORIES = [
   'Praia',
   'Outro',
 ] as const
+
+// ─── Preferências do usuário ──────────────────────────────────────────────────
+
+export interface PreferenceCategory {
+  /** Coisas que adora fazer */
+  activitiesLoves: string[]
+  /** Lugares que adora ir */
+  placesLoves: string[]
+  /** Lugares que não vai de jeito nenhum */
+  placesNever: string[]
+  /** Lugares que não gosta mas vai */
+  placesTolerate: string[]
+  /** Comidas que gosta */
+  foodLoves: string[]
+  /** Comidas que não come de jeito nenhum */
+  foodNever: string[]
+  /** Comidas que come com exceção */
+  foodTolerate: string[]
+  /** Outros gostos livres */
+  otherNotes: string
+}
+
+export interface UserPreferences {
+  /** UID do usuário */
+  userId: string
+  preferences: PreferenceCategory
+  updatedAt: number
+}

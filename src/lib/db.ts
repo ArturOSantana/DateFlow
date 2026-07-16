@@ -5,12 +5,14 @@ import {
   updateDoc,
   deleteDoc,
   getDocs,
+  getDoc,
+  setDoc,
   query,
   where,
   orderBy,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { DateEvent, Idea, Partnership } from '../types'
+import type { DateEvent, Idea, Partnership, UserPreferences, PreferenceCategory } from '../types'
 
 // ─── Dates ───────────────────────────────────────────────────────────────────
 
@@ -192,4 +194,19 @@ export async function getPendingInviteCount(userEmail: string): Promise<number> 
   )
   const snap = await getDocs(q)
   return snap.size
+}
+
+// ─── User Preferences ─────────────────────────────────────────────────────────
+
+export async function getUserPreferences(userId: string): Promise<PreferenceCategory | null> {
+  const ref = doc(db, 'userPreferences', userId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return null
+  const data = snap.data() as UserPreferences
+  return data.preferences ?? null
+}
+
+export async function saveUserPreferences(userId: string, preferences: PreferenceCategory): Promise<void> {
+  const ref = doc(db, 'userPreferences', userId)
+  await setDoc(ref, { userId, preferences, updatedAt: Date.now() })
 }

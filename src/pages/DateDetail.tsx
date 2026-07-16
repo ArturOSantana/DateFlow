@@ -4,7 +4,7 @@ import {
   ArrowLeft, Edit2, Trash2, CheckCircle2, Circle, Share2, CalendarPlus,
   MapPin, Clock, Calendar, Copy, Check, Ban, RotateCcw, Heart, MessageCircle,
   DollarSign, Star, TrendingUp, TrendingDown, Plus, Navigation,
-  Eye, EyeOff, Trash, User,
+  Eye, EyeOff, Trash, User, Lightbulb, X,
 } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -85,6 +85,10 @@ export default function DateDetail() {
   const [expenseAmount, setExpenseAmount] = useState('')
   const amountRef = useRef<HTMLInputElement>(null)
 
+  // Dicas para parceira
+  const [newHint, setNewHint] = useState('')
+  const [savingHints, setSavingHints] = useState(false)
+
   async function saveRating(stars: number) {
     if (!date) return
     await dbApi.updateDate(date.id, { rating: stars })
@@ -127,6 +131,31 @@ export default function DateDetail() {
   async function toggleShareFinance() {
     if (!date) return
     await dbApi.updateDate(date.id, { shareFinance: !date.shareFinance })
+    await refreshDates()
+  }
+
+  async function toggleHiddenFromPartner() {
+    if (!date) return
+    await dbApi.updateDate(date.id, { hiddenFromPartner: !date.hiddenFromPartner })
+    await refreshDates()
+  }
+
+  async function addHint() {
+    if (!date) return
+    const text = newHint.trim()
+    if (!text) return
+    const updated = [...(date.partnerHints ?? []), text]
+    setSavingHints(true)
+    await dbApi.updateDate(date.id, { partnerHints: updated })
+    await refreshDates()
+    setNewHint('')
+    setSavingHints(false)
+  }
+
+  async function removeHint(i: number) {
+    if (!date) return
+    const updated = (date.partnerHints ?? []).filter((_, idx) => idx !== i)
+    await dbApi.updateDate(date.id, { partnerHints: updated })
     await refreshDates()
   }
 
@@ -259,6 +288,80 @@ export default function DateDetail() {
           </div>
         )}
       </div>
+
+      {/* ── Visibilidade + Dicas para a parceira ── */}
+      {date.withPartnerId && (
+        <div className="card p-4 mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+              <Lightbulb size={12} className="text-amber-400" />
+              Para a parceira
+            </p>
+            {/* Toggle ocultar/mostrar */}
+            <button
+              onClick={toggleHiddenFromPartner}
+              className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+                date.hiddenFromPartner
+                  ? 'bg-violet-100 text-violet-700'
+                  : 'bg-stone-100 text-stone-500'
+              }`}
+              title={date.hiddenFromPartner ? 'Data oculta — ela só vê as dicas' : 'Ela vê todos os detalhes'}
+            >
+              {date.hiddenFromPartner
+                ? <><EyeOff size={12} /> Date oculto</>
+                : <><Eye size={12} /> Date visível</>
+              }
+            </button>
+          </div>
+
+          {date.hiddenFromPartner && (
+            <p className="text-xs text-violet-600 bg-violet-50 rounded-lg px-3 py-2 mb-3">
+              Ela não vê o título, local nem descrição — apenas as dicas abaixo.
+            </p>
+          )}
+
+          {/* Lista de dicas */}
+          <div className="space-y-1.5 mb-2">
+            {(date.partnerHints ?? []).length === 0 && (
+              <p className="text-xs text-stone-400 italic">
+                {date.hiddenFromPartner
+                  ? 'Nenhuma dica ainda — adicione ao menos uma para ela.'
+                  : 'Nenhuma dica ainda.'}
+              </p>
+            )}
+            {(date.partnerHints ?? []).map((hint, i) => (
+              <div key={i} className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 group">
+                <Lightbulb size={12} className="text-amber-400 shrink-0" />
+                <span className="text-sm text-stone-700 flex-1">{hint}</span>
+                <button
+                  onClick={() => removeHint(i)}
+                  className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-500 transition-all"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Input nova dica */}
+          <div className="flex gap-2">
+            <input
+              className="input flex-1 text-sm"
+              placeholder="Ex: Traga algo leve para caminhar…"
+              value={newHint}
+              onChange={e => setNewHint(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addHint())}
+            />
+            <button
+              onClick={addHint}
+              disabled={savingHints}
+              className="btn-secondary shrink-0"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Controle financeiro ── */}
       {isActive && (
