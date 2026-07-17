@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Users, UserPlus, UserCheck, UserX, Trash2, User, Clock, Check,
-  Heart, MapPin, Utensils, X, ChevronDown,
+  Heart, MapPin, Utensils, X, ChevronDown, Copy, CheckCheck,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
@@ -156,9 +156,20 @@ export default function PartnerPage() {
   const [loadingPrefs, setLoadingPrefs] = useState(false)
   const [viewedPrefs, setViewedPrefs] = useState<PreferenceCategory | null>(null)
 
+  // Copiar link
+  const [copied, setCopied] = useState(false)
+
   // Vinculação em massa
   const [linking, setLinking] = useState<string | null>(null)
   const [linkedMsg, setLinkedMsg] = useState<string | null>(null)
+
+  function copyInviteLink() {
+    const link = `${window.location.origin}/partner/view/${user!.uid}`
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    })
+  }
 
   async function load() {
     if (!user) return
@@ -239,7 +250,7 @@ export default function PartnerPage() {
         status: 'pending',
       })
       setInviteEmail('')
-      setSuccess('Convite enviado! Quando a pessoa abrir o app e acessar "Parceiro" na navegação, verá a solicitação.')
+      setSuccess('Convite enviado!')
       await load()
     } catch (err) {
       console.error('[PartnerPage] sendInvite error:', err)
@@ -323,7 +334,29 @@ export default function PartnerPage() {
             </div>
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
-          {success && <p className="text-xs text-emerald-600">{success}</p>}
+          {success && (
+            <div className="space-y-2">
+              <p className="text-xs text-emerald-600">{success}</p>
+              <div className="bg-stone-50 border border-stone-200 rounded-xl px-3 py-2.5">
+                <p className="text-xs text-stone-500 mb-2">
+                  Manda esse link para ela entrar direto:
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs text-stone-600 flex-1 truncate bg-white border border-stone-200 rounded-lg px-2 py-1.5 select-all">
+                    {`${window.location.origin}/partner/view/${user?.uid}`}
+                  </code>
+                  <button
+                    onClick={copyInviteLink}
+                    className="btn-secondary shrink-0 text-xs px-2.5 py-1.5"
+                    title="Copiar link"
+                  >
+                    {copied ? <CheckCheck size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                    {copied ? 'Copiado!' : 'Copiar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -380,13 +413,22 @@ export default function PartnerPage() {
                   <p className="text-sm text-stone-700 truncate">{p.recipientEmail}</p>
                   <p className="text-xs text-stone-400">Aguardando resposta</p>
                 </div>
-                <button
-                  onClick={() => removePartnership(p.id)}
-                  className="btn-ghost text-xs text-stone-400 hover:text-red-500 shrink-0"
-                  title="Cancelar convite"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={copyInviteLink}
+                    className="btn-ghost text-xs text-stone-400 hover:text-stone-700"
+                    title="Copiar link de convite"
+                  >
+                    {copied ? <CheckCheck size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                  </button>
+                  <button
+                    onClick={() => removePartnership(p.id)}
+                    className="btn-ghost text-xs text-stone-400 hover:text-red-500"
+                    title="Cancelar convite"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
