@@ -326,7 +326,7 @@ export interface BrasaSession {
   p1Name: string
   p2Uid?: string
   p2Name?: string
-  status: 'waiting' | 'playing' | 'done'
+  status: 'waiting' | 'playing' | 'done' | 'cancelled'
   /** IDs das cartas do deck atual, em ordem */
   deckIds: string[]
   cardIndex: number

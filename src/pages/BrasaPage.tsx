@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Flame, ChevronRight, RefreshCw, Trophy, Star, Copy, CheckCheck, Share2 } from 'lucide-react'
+import { ArrowLeft, Flame, ChevronRight, RefreshCw, Trophy, Star, Copy, CheckCheck, Share2, Ban } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   createBrasaSession,
@@ -151,8 +151,9 @@ function SetupScreen({ onCreate, onJoin, loading, initialCode }: {
 
 // ─── Tela: Aguardando P2 ──────────────────────────────────────────────────────
 
-function WaitingScreen({ code }: { code: string }) {
+function WaitingScreen({ code, onCancel }: { code: string; onCancel: () => void }) {
   const [copied, setCopied] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const link = `${window.location.origin}/ideas/brasa?code=${code}`
 
   function copyLink() {
@@ -199,6 +200,61 @@ function WaitingScreen({ code }: { code: string }) {
           {copied ? 'Copiado!' : 'Copiar link'}
         </button>
       </div>
+
+      {/* Cancelar convite */}
+      {!confirmCancel ? (
+        <button
+          onClick={() => setConfirmCancel(true)}
+          className="text-xs text-stone-400 hover:text-red-500 transition-colors underline underline-offset-2 mt-1"
+        >
+          Cancelar convite
+        </button>
+      ) : (
+        <div className="w-full card p-4 flex flex-col gap-3">
+          <p className="text-sm text-stone-700 font-medium">Cancelar o convite?</p>
+          <p className="text-xs text-stone-500">O link ficará inválido e a partida será encerrada.</p>
+          <div className="flex gap-2">
+            <button
+              onClick={onCancel}
+              className="flex-1 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors"
+            >
+              Sim, cancelar
+            </button>
+            <button
+              onClick={() => setConfirmCancel(false)}
+              className="flex-1 py-2 rounded-xl border border-stone-200 text-stone-600 text-sm font-semibold hover:bg-stone-50 transition-colors"
+            >
+              Não
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Tela: Convite cancelado ──────────────────────────────────────────────────
+
+function CancelledScreen({ onRestart }: { onRestart: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[65vh] p-6 max-w-sm mx-auto text-center gap-5">
+      <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
+        <Ban size={28} className="text-red-400" />
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-red-400 uppercase tracking-wide">Partida cancelada</p>
+        <p className="text-lg font-semibold text-stone-900 mt-2">Convite recusado ou cancelado</p>
+        <p className="text-sm text-stone-500 mt-2 leading-relaxed">
+          Esta partida foi encerrada antes de começar.
+        </p>
+      </div>
+      <button
+        onClick={onRestart}
+        className="btn-primary justify-center"
+      >
+        <RefreshCw size={14} />
+        Criar nova partida
+      </button>
     </div>
   )
 }
@@ -585,7 +641,7 @@ function EndScreen({ session, onRestart }: { session: BrasaSession; onRestart: (
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-type LocalScreen = 'setup' | 'waiting' | 'playing' | 'bonus_unlock' | 'final' | 'end'
+type LocalScreen = 'setup' | 'waiting' | 'playing' | 'bonus_unlock' | 'final' | 'end' | 'cancelled'
 
 export default function BrasaPage() {
   const navigate = useNavigate()
@@ -611,8 +667,9 @@ export default function BrasaPage() {
   // Detecta transições de tela com base no estado do Firestore
   useEffect(() => {
     if (!session) return
-    if (session.status === 'done')    { setScreen('end');    return }
-    if (session.finalChallengeId)     { setScreen('final');  return }
+    if (session.status === 'cancelled') { setScreen('cancelled'); return }
+    if (session.status === 'done')      { setScreen('end');       return }
+    if (session.finalChallengeId)       { setScreen('final');     return }
     if (session.bonusUnlocked && !session.finalChallengeId && session.act === 99) {
       setScreen('playing'); return
     }
@@ -757,6 +814,16 @@ export default function BrasaPage() {
     }
   }
 
+  async function handleCancelInvite() {
+    if (!session) return
+    setLoading(true)
+    try {
+      await updateBrasaSession(session.id, { status: 'cancelled' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function handleRestart() {
     unsubRef.current?.()
     setSession(null)
@@ -817,7 +884,11 @@ export default function BrasaPage() {
         )}
 
         {screen === 'waiting' && session && (
-          <WaitingScreen code={session.code} />
+          <WaitingScreen code={session.code} onCancel={handleCancelInvite} />
+        )}
+
+        {screen === 'cancelled' && (
+          <CancelledScreen onRestart={handleRestart} />
         )}
 
         {screen === 'playing' && session && currentCard && (
