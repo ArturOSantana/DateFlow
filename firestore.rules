@@ -108,7 +108,13 @@ service cloud.firestore {
                     && (request.auth.uid == resource.data.p1Uid
                         || request.auth.uid == resource.data.p2Uid);
 
-      // Entrada (join): qualquer autenticado pode ler para encontrar pelo código
+      // Entrada (join): p2 ainda não está no doc, então permite update quando p2Uid está vazio
+      allow update: if request.auth != null
+                    && resource.data.status == 'waiting'
+                    && (!('p2Uid' in resource.data) || resource.data.p2Uid == null || resource.data.p2Uid == '')
+                    && request.resource.data.p2Uid == request.auth.uid;
+
+      // Leitura para encontrar sessão pelo código (join)
       allow read: if request.auth != null;
     }
   }
