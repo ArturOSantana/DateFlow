@@ -52,36 +52,36 @@ export default function FinancePage() {
       ) : (
         <>
           {/* Stats em grid */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="card p-4 animate-pop-in stagger-1">
-              <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center mb-2">
-                <DollarSign size={15} className="text-stone-500" />
+          <div className="grid grid-cols-3 gap-2 mb-6">
+            <div className="card p-3 animate-pop-in stagger-1">
+              <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center mb-1.5">
+                <DollarSign size={13} className="text-stone-500" />
               </div>
-              <p className="text-xs text-stone-400 mb-0.5">Orçamento</p>
-              <p className="text-base font-bold text-stone-900 leading-tight tabular-nums">
+              <p className="text-[10px] text-stone-400 mb-0.5 leading-tight">Orçamento</p>
+              <p className="text-sm font-bold text-stone-900 leading-tight tabular-nums truncate">
                 {fmt(stats.totalBudget)}
               </p>
             </div>
 
-            <div className="card p-4 animate-pop-in stagger-2">
-              <div className="w-8 h-8 rounded-xl bg-ember-50 flex items-center justify-center mb-2">
-                <Wallet size={15} className="text-ember-600" />
+            <div className="card p-3 animate-pop-in stagger-2">
+              <div className="w-7 h-7 rounded-lg bg-ember-50 flex items-center justify-center mb-1.5">
+                <Wallet size={13} className="text-ember-600" />
               </div>
-              <p className="text-xs text-stone-400 mb-0.5">Gasto</p>
-              <p className="text-base font-bold text-stone-900 leading-tight tabular-nums">
+              <p className="text-[10px] text-stone-400 mb-0.5 leading-tight">Gasto</p>
+              <p className="text-sm font-bold text-stone-900 leading-tight tabular-nums truncate">
                 {fmt(stats.totalSpent)}
               </p>
             </div>
 
-            <div className={`card p-4 animate-pop-in stagger-3 ${over ? 'border-red-200' : 'border-emerald-200'}`}>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 ${over ? 'bg-red-50' : 'bg-emerald-50'}`}>
+            <div className={`card p-3 animate-pop-in stagger-3 ${over ? 'border-red-200' : 'border-emerald-200'}`}>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 ${over ? 'bg-red-50' : 'bg-emerald-50'}`}>
                 {over
-                  ? <TrendingUp size={15} className="text-red-500" />
-                  : <TrendingDown size={15} className="text-emerald-600" />
+                  ? <TrendingUp size={13} className="text-red-500" />
+                  : <TrendingDown size={13} className="text-emerald-600" />
                 }
               </div>
-              <p className="text-xs text-stone-400 mb-0.5">Saldo</p>
-              <p className={`text-base font-bold leading-tight tabular-nums ${over ? 'text-red-600' : 'text-emerald-700'}`}>
+              <p className="text-[10px] text-stone-400 mb-0.5 leading-tight">Saldo</p>
+              <p className={`text-sm font-bold leading-tight tabular-nums truncate ${over ? 'text-red-600' : 'text-emerald-700'}`}>
                 {over ? '+' : ''}{fmt(diff)}
               </p>
             </div>

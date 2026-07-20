@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ThumbsUp, ThumbsDown, X, Check } from 'lucide-react'
+import { Bell, ThumbsUp, ThumbsDown, X, Check, Ban, CalendarClock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getPendingInviteCount, getNotifications, markAllNotificationsRead } from '../lib/db'
@@ -95,7 +95,7 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-11 w-80 bg-white border border-stone-200 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 top-11 w-[min(320px,calc(100vw-1.5rem))] bg-white border border-stone-200 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
             <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide">Notificações</p>
             <button onClick={() => setOpen(false)} className="text-stone-400 hover:text-stone-600">
@@ -130,25 +130,39 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
                 className={`w-full text-left px-4 py-3 hover:bg-stone-50 transition-colors flex items-start gap-3 ${!n.read ? 'bg-stone-50/60' : ''}`}
               >
                 <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                  n.type === 'date_accepted' ? 'bg-emerald-100' : 'bg-red-100'
+                  n.type === 'date_accepted'
+                    ? 'bg-emerald-100'
+                    : n.type === 'date_changed'
+                      ? 'bg-amber-100'
+                      : 'bg-red-100'
                 }`}>
-                  {n.type === 'date_accepted'
-                    ? <ThumbsUp size={13} className="text-emerald-600" />
-                    : <ThumbsDown size={13} className="text-red-500" />
-                  }
+                  {n.type === 'date_accepted' ? (
+                    <ThumbsUp size={13} className="text-emerald-600" />
+                  ) : n.type === 'date_changed' ? (
+                    <CalendarClock size={13} className="text-amber-600" />
+                  ) : n.type === 'date_cancelled' ? (
+                    <Ban size={13} className="text-red-500" />
+                  ) : (
+                    <ThumbsDown size={13} className="text-red-500" />
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-stone-800 leading-snug">
                     <span className="font-medium">{n.fromName}</span>
-                    {n.type === 'date_accepted'
-                      ? <span className="text-emerald-700"> aceitou</span>
-                      : <span className="text-red-600"> recusou</span>
-                    }
+                    {n.type === 'date_accepted' && <span className="text-emerald-700"> aceitou</span>}
+                    {n.type === 'date_declined' && <span className="text-red-600"> recusou</span>}
+                    {n.type === 'date_cancelled' && <span className="text-red-600"> cancelou</span>}
+                    {n.type === 'date_changed' && <span className="text-amber-700"> alterou</span>}
                     {' o date '}
                     <span className="font-medium">"{n.dateTitle}"</span>
                   </p>
-                  {n.type === 'date_declined' && n.reason && (
+                  {(n.type === 'date_declined' || n.type === 'date_cancelled') && n.reason && (
                     <p className="text-xs text-stone-500 italic mt-0.5 truncate">"{n.reason}"</p>
+                  )}
+                  {n.type === 'date_changed' && (n.dateValue || n.timeValue) && (
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Nova data: {[n.dateValue ? new Date(`${n.dateValue}T12:00:00`).toLocaleDateString('pt-BR') : null, n.timeValue].filter(Boolean).join(' às ')}
+                    </p>
                   )}
                   <p className="text-xs text-stone-400 mt-0.5">
                     {new Date(n.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}

@@ -11,8 +11,11 @@ import {
   where,
   orderBy,
   onSnapshot,
+  deleteField,
   type Unsubscribe,
 } from 'firebase/firestore'
+
+export { deleteField }
 import { db } from './firebase'
 import type { AppNotification, DateEvent, Idea, NotificationType, Partnership, UserPreferences, PreferenceCategory } from '../types'
 
@@ -269,6 +272,8 @@ export async function createNotification(data: {
   dateTitle: string
   fromName: string
   reason?: string
+  dateValue?: string
+  timeValue?: string
 }): Promise<void> {
   await addDoc(collection(db, 'notifications'), {
     ...data,

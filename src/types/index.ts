@@ -77,20 +77,26 @@ export interface DateEvent {
 export type NotificationType =
   | 'date_accepted'   // parceiro aceitou o date
   | 'date_declined'   // parceiro recusou o date
+  | 'date_cancelled'  // date foi cancelado
+  | 'date_changed'    // data/horário do date mudou
 
 export interface AppNotification {
   id: string
-  /** UID do usuário que deve receber a notificação (dono do date) */
+  /** UID do usuário que deve receber a notificação */
   toUserId: string
   type: NotificationType
   /** ID do date relacionado */
   dateId: string
   /** Título do date (para mostrar na notificação) */
   dateTitle: string
-  /** Nome de quem respondeu */
+  /** Nome de quem gerou a ação */
   fromName: string
-  /** Motivo da recusa, se houver */
+  /** Motivo da recusa/cancelamento, se houver */
   reason?: string
+  /** Nova data do date, quando aplicável */
+  dateValue?: string
+  /** Novo horário do date, quando aplicável */
+  timeValue?: string
   read: boolean
   createdAt: number
 }

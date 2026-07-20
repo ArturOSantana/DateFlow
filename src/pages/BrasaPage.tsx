@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Flame, ChevronRight, RefreshCw, Trophy, Star, Copy, CheckCheck, Share2, Ban } from 'lucide-react'
+import { ArrowLeft, Flame, ChevronRight, RefreshCw, Trophy, Star, Copy, CheckCheck, Share2, Ban, Crown } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   createBrasaSession,
@@ -8,6 +8,7 @@ import {
   joinBrasaSession,
   updateBrasaSession,
   subscribeBrasaSession,
+  deleteField,
   type BrasaSession,
 } from '../lib/db'
 import {
@@ -76,15 +77,15 @@ function SetupScreen({ onCreate, onJoin, loading, initialCode }: {
         </div>
         <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Brasa</h1>
         <p className="text-sm text-stone-500 mt-1.5 leading-relaxed max-w-xs mx-auto">
-          Cada um no proprio celular. Perguntas que importam. Conexao de verdade.
+          Cada um no proprio celular. Escolham quem é mais provavel e descubram o quanto voces se conhecem.
         </p>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
         {[
-          { label: 'Ato I',   sub: 'Superficie' },
-          { label: 'Ato II',  sub: 'Profundeza'  },
-          { label: 'Ato III', sub: 'Brasa'        },
+          { label: 'Ato I',   sub: 'Leve' },
+          { label: 'Ato II',  sub: 'Pessoal'  },
+          { label: 'Ato III', sub: 'Sem filtro'        },
         ].map(a => (
           <div key={a.label} className="card p-3">
             <p className="text-xs font-bold text-stone-900">{a.label}</p>
@@ -277,7 +278,6 @@ function CardScreen({
   const [submitted, setSubmitted] = useState(false)
 
   const myAnswer   = myRole === 'p1' ? session.p1Answer : session.p2Answer
-  const theirAnswer = myRole === 'p1' ? session.p2Answer : session.p1Answer
   const theirName  = myRole === 'p1' ? (session.p2Name ?? 'Parceiro') : session.p1Name
 
   const bothAnswered = !!session.p1Answer && !!session.p2Answer
@@ -323,129 +323,10 @@ function CardScreen({
 
       {/* Carta */}
       <div className={`rounded-2xl border-2 p-6 flex flex-col gap-3 ${meta.border} ${meta.bg}`}>
-        {card.mechanic === 'solo' && (
-          <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">
-            {iAmP1 ? 'Esta carta e para voce' : 'Esta carta e para ' + theirName}
-          </p>
-        )}
         <p className="text-lg font-semibold text-stone-900 leading-snug">{card.text}</p>
         <p className="text-sm text-stone-500 italic leading-relaxed border-t border-stone-200 pt-3">{card.how}</p>
       </div>
 
-      {/* SOLO: apenas um responde */}
-      {card.mechanic === 'solo' && (
-        <>
-          {iAmP1 ? (
-            /* P1 responde */
-            alreadyAnswered ? (
-              <div className="card p-4">
-                <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">Sua resposta</p>
-                <p className="text-sm text-stone-900 leading-relaxed">{myAnswer?.value}</p>
-                <p className="text-xs text-stone-400 mt-3">
-                  {theirAnswer ? 'Parceiro leu. Pode continuar.' : 'Aguardando ' + theirName + ' ver a carta...'}
-                </p>
-              </div>
-            ) : (
-              <div className="card p-4 space-y-3">
-                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Sua resposta</p>
-                <textarea
-                  className="textarea"
-                  rows={3}
-                  placeholder="Escreva aqui..."
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  disabled={submitted}
-                />
-                <button
-                  onClick={handleSubmit}
-                  disabled={!text.trim() || submitted || loading}
-                  className="btn-primary w-full justify-center disabled:opacity-40"
-                >
-                  Enviar resposta
-                </button>
-              </div>
-            )
-          ) : (
-            /* P2 ve a resposta do P1 */
-            <div className="card p-4">
-              {session.p1Answer ? (
-                <>
-                  <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">Resposta de {session.p1Name}</p>
-                  <p className="text-sm text-stone-900 leading-relaxed">{session.p1Answer.value}</p>
-                  {/* P2 confirma que leu */}
-                  {!alreadyAnswered && (
-                    <button
-                      onClick={() => onSubmitAnswer('lido')}
-                      disabled={loading}
-                      className="btn-secondary w-full justify-center mt-4 disabled:opacity-40"
-                    >
-                      Li a resposta
-                    </button>
-                  )}
-                  {alreadyAnswered && <p className="text-xs text-stone-400 mt-3">Confirmado. Aguardando proxima carta...</p>}
-                </>
-              ) : (
-                <div className="flex items-center gap-2 text-stone-400">
-                  <div className="w-3 h-3 border-2 border-stone-300 border-t-stone-500 rounded-full animate-spin" />
-                  <p className="text-sm">Aguardando {session.p1Name} responder...</p>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* BOTH: ambos respondem, revelam juntos */}
-      {card.mechanic === 'both' && (
-        <div className="card p-4 space-y-3">
-          {!bothAnswered ? (
-            alreadyAnswered ? (
-              <>
-                <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Resposta enviada</p>
-                <p className="text-sm text-stone-500 italic">(oculta ate o outro enviar)</p>
-                <div className="flex items-center gap-2 text-stone-400">
-                  <div className="w-3 h-3 border-2 border-stone-300 border-t-stone-500 rounded-full animate-spin" />
-                  <p className="text-sm">Aguardando {theirName}...</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Sua resposta (oculta ate o outro enviar)</p>
-                <textarea
-                  className="textarea"
-                  rows={3}
-                  placeholder="Escreva aqui..."
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  disabled={submitted}
-                />
-                <button
-                  onClick={handleSubmit}
-                  disabled={!text.trim() || submitted || loading}
-                  className="btn-primary w-full justify-center disabled:opacity-40"
-                >
-                  Enviar (oculto)
-                </button>
-              </>
-            )
-          ) : (
-            /* Ambos responderam — revela */
-            <>
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Respostas reveladas</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
-                  <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide mb-1">{session.p1Name}</p>
-                  <p className="text-sm text-stone-900 font-medium leading-snug">{session.p1Answer?.value}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
-                  <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide mb-1">{session.p2Name}</p>
-                  <p className="text-sm text-stone-900 font-medium leading-snug">{session.p2Answer?.value}</p>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {/* VOTE: ambos votam, revelam juntos */}
       {card.mechanic === 'vote' && (
@@ -461,7 +342,7 @@ function CardScreen({
               </>
             ) : (
               <>
-                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Quem voce acha?</p>
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Quem e mais provavel?</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(['p1', 'p2'] as const).map(v => (
                     <button
@@ -500,9 +381,15 @@ function CardScreen({
                   )
                 })}
               </div>
-              {session.p1Answer?.value === session.p2Answer?.value && (
-                <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-center">
-                  <p className="text-xs font-bold text-emerald-700">Votos iguais — bonus de sintonia</p>
+              {session.p1Answer?.value === session.p2Answer?.value ? (
+                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-center space-y-1">
+                  <p className="text-xs font-bold text-emerald-700">Acertaram juntos</p>
+                  <p className="text-[11px] text-emerald-600">+5 de sintonia na brasa e +3 pts para cada um</p>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 text-center space-y-1">
+                  <p className="text-xs font-bold text-stone-700">Votos diferentes</p>
+                  <p className="text-[11px] text-stone-500">+1 pt pela ousadia de se expor</p>
                 </div>
               )}
             </>
@@ -607,7 +494,7 @@ function EndScreen({ session, onRestart }: { session: BrasaSession; onRestart: (
       </div>
 
       <div className="w-full card p-4 space-y-3 text-left">
-        <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Resultado</p>
+        <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Placar final</p>
         {[
           { name: session.p1Name, pts: session.p1Pts },
           { name: session.p2Name ?? 'Parceiro', pts: session.p2Pts },
@@ -622,6 +509,9 @@ function EndScreen({ session, onRestart }: { session: BrasaSession; onRestart: (
             <div className="flex items-center gap-1">
               <Star size={12} className="text-amber-400 fill-amber-400" />
               <span className="text-sm font-bold text-stone-800">{p.pts} pts</span>
+              {p.pts === Math.max(session.p1Pts, session.p2Pts) && session.p1Pts !== session.p2Pts && (
+                <Crown size={12} className="text-stone-700" />
+              )}
             </div>
           </div>
         ))}
@@ -740,9 +630,12 @@ export default function BrasaPage() {
       const card = ALL_CARDS[session.deckIds[session.cardIndex]]
       const pts = session.doublePts ? card.pts * 2 : card.pts
       const voteBonus = card.mechanic === 'vote' && session.p1Answer?.value === session.p2Answer?.value ? 5 : 0
+      const sameVote = session.p1Answer?.value === session.p2Answer?.value
       const newBrasa  = Math.min(100, session.brasa + pts + voteBonus)
-      const newP1Pts  = session.p1Pts + Math.round(pts * 0.5)
-      const newP2Pts  = session.p2Pts + Math.round(pts * 0.5)
+      const basePts = Math.max(1, Math.round(pts * 0.35))
+      const agreePts = sameVote ? 3 : 0
+      const newP1Pts  = session.p1Pts + basePts + agreePts
+      const newP2Pts  = session.p2Pts + basePts + agreePts
       const newCompleted = session.completedCards + 1
 
       const nextIndex = session.cardIndex + 1
@@ -754,7 +647,7 @@ export default function BrasaPage() {
         await updateBrasaSession(session.id, {
           brasa: newBrasa, p1Pts: newP1Pts, p2Pts: newP2Pts,
           completedCards: newCompleted, finalChallengeId: fc.id,
-          p1Answer: undefined, p2Answer: undefined, doublePts: false,
+          p1Answer: deleteField() as any, p2Answer: deleteField() as any, doublePts: false,
         })
         return
       }
@@ -774,7 +667,7 @@ export default function BrasaPage() {
           brasa: newBrasa, p1Pts: newP1Pts, p2Pts: newP2Pts,
           completedCards: newCompleted, act: nextAct,
           deckIds: nextDeck.map(c => c.id), cardIndex: 0,
-          p1Answer: undefined, p2Answer: undefined, doublePts: false,
+          p1Answer: deleteField() as any, p2Answer: deleteField() as any, doublePts: false,
         })
         return
       }
@@ -782,7 +675,7 @@ export default function BrasaPage() {
       await updateBrasaSession(session.id, {
         brasa: newBrasa, p1Pts: newP1Pts, p2Pts: newP2Pts,
         completedCards: newCompleted, cardIndex: nextIndex,
-        p1Answer: undefined, p2Answer: undefined, doublePts: false,
+        p1Answer: deleteField() as any, p2Answer: deleteField() as any, doublePts: false,
       })
     } finally {
       setLoading(false)
@@ -797,7 +690,7 @@ export default function BrasaPage() {
       await updateBrasaSession(session.id, {
         bonusUnlocked: true, act: 99,
         deckIds: deck.map(c => c.id), cardIndex: 0,
-        p1Answer: undefined, p2Answer: undefined,
+        p1Answer: deleteField() as any, p2Answer: deleteField() as any,
       })
     } finally {
       setLoading(false)

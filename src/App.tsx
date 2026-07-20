@@ -41,7 +41,7 @@ function ProtectedLayout() {
       <Sidebar />
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pb-20 md:pb-0 mt-12 md:mt-0 overflow-y-auto">
+      <main className="flex-1 min-w-0 pb-safe-nav md:pb-0 mt-12 md:mt-0 overflow-y-auto">
         <Outlet />
       </main>
 

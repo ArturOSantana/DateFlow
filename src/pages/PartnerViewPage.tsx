@@ -238,18 +238,17 @@ export default function PartnerViewPage() {
     const targetDate = dates.find(d => d.id === dateId)
     if (!targetDate) return
 
-    // Muda status para confirmed se aceito, mantém waiting_reply se recusado
-    const newStatus = decision === 'accepted' ? 'confirmed' : targetDate.status
+    const cleanedReason = reason?.trim()
+    const newStatus = decision === 'accepted' ? 'confirmed' : 'cancelled'
 
     const decisionUpdate: Partial<DateEvent> = {
       partnerDecision: decision,
       status: newStatus,
+      partnerDecisionReason: cleanedReason,
     }
-    if (reason) decisionUpdate.partnerDecisionReason = reason
 
     await dbApi.updateDate(dateId, decisionUpdate)
 
-    // Cria notificação para o dono do date
     const notifData: Parameters<typeof dbApi.createNotification>[0] = {
       toUserId: targetDate.userId,
       type: decision === 'accepted' ? 'date_accepted' : 'date_declined',
@@ -257,13 +256,12 @@ export default function PartnerViewPage() {
       dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,
       fromName: user?.displayName ?? user?.email ?? 'Parceiro(a)',
     }
-    if (reason) notifData.reason = reason
+    if (cleanedReason) notifData.reason = cleanedReason
     await dbApi.createNotification(notifData)
 
-    // Atualiza localmente
     setDates(prev => prev.map(d =>
       d.id === dateId
-        ? { ...d, partnerDecision: decision, partnerDecisionReason: reason, status: newStatus }
+        ? { ...d, partnerDecision: decision, partnerDecisionReason: cleanedReason, status: newStatus }
         : d
     ))
   }
@@ -926,20 +924,16 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
                     <div className="space-y-2">
                       <div>
                         <p className="text-xs font-medium text-stone-700 mb-1">
-                          Por que não quer ir?{' '}
-                          <span className="text-red-500">*</span>
+                          Por que não quer ir? <span className="text-stone-400">(opcional)</span>
                         </p>
                         <textarea
                           className="textarea text-sm"
                           rows={2}
-                          placeholder="Conte o motivo para não ir…"
+                          placeholder="Se quiser, conte o motivo para não ir…"
                           value={declineReason}
                           onChange={e => setDeclineReason(e.target.value)}
                           autoFocus
                         />
-                        {declineReason.trim() === '' && (
-                          <p className="text-xs text-red-500 mt-1">O motivo é obrigatório para recusar.</p>
-                        )}
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -950,7 +944,7 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
                         </button>
                         <button
                           onClick={() => handleDecide('declined')}
-                          disabled={deciding || declineReason.trim() === ''}
+                          disabled={deciding}
                           className="btn-secondary flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <ThumbsDown size={13} />
@@ -1114,20 +1108,16 @@ function HiddenDateCard({
                 <div className="space-y-2">
                   <div>
                     <p className="text-xs font-medium text-stone-700 mb-1">
-                      Por que não quer ir?{' '}
-                      <span className="text-red-500">*</span>
+                      Por que não quer ir? <span className="text-stone-400">(opcional)</span>
                     </p>
                     <textarea
                       className="textarea text-sm"
                       rows={2}
-                      placeholder="Conte o motivo para não ir…"
+                      placeholder="Se quiser, conte o motivo para não ir…"
                       value={declineReason}
                       onChange={e => setDeclineReason(e.target.value)}
                       autoFocus
                     />
-                    {declineReason.trim() === '' && (
-                      <p className="text-xs text-red-500 mt-1">O motivo é obrigatório para recusar.</p>
-                    )}
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -1138,7 +1128,7 @@ function HiddenDateCard({
                     </button>
                     <button
                       onClick={() => handleDecide('declined')}
-                      disabled={deciding || declineReason.trim() === ''}
+                      disabled={deciding}
                       className="btn-secondary flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <ThumbsDown size={13} />

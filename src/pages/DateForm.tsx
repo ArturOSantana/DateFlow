@@ -125,7 +125,28 @@ export default function DateForm() {
     setSaving(true)
     try {
       if (isEdit && id) {
+        const dateChanged = existing && (existing.date !== form.date || existing.time !== form.time)
+
         await dbApi.updateDate(id, form)
+
+        if (dateChanged) {
+          const fromName = user?.displayName ?? user?.email ?? 'Parceiro(a)'
+          const notificationTargets = new Set<string>()
+          notificationTargets.add(existing.userId)
+          if (existing.withPartnerId) notificationTargets.add(existing.withPartnerId)
+
+          await Promise.all([...notificationTargets].map(toUserId =>
+            dbApi.createNotification({
+              toUserId,
+              type: 'date_changed',
+              dateId: id,
+              dateTitle: form.hiddenFromPartner ? 'Surpresa' : form.title,
+              fromName,
+              dateValue: form.date,
+              timeValue: form.time,
+            })
+          ))
+        }
       } else {
         await dbApi.createDate({
           ...form,
@@ -362,7 +383,7 @@ export default function DateForm() {
           <label className="label">Checklist</label>
           <div className="space-y-1.5 mb-2">
             {form.checklist.map(task => (
-              <div key={task.id} className="flex items-center gap-2 group">
+              <div key={task.id} className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={task.done}
@@ -375,7 +396,7 @@ export default function DateForm() {
                 <button
                   type="button"
                   onClick={() => removeTask(task.id)}
-                  className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-500 transition-all"
+                  className="text-stone-300 hover:text-red-500 active:text-red-500 transition-all p-1"
                 >
                   <Trash2 size={13} />
                 </button>

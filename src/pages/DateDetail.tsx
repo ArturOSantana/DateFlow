@@ -187,8 +187,19 @@ export default function DateDetail() {
   }
 
   async function setStatus(status: DateStatus) {
-    if (!date) return
+    if (!date || !user) return
     await dbApi.updateDate(date.id, { status })
+
+    if (status === 'cancelled' && date.withPartnerId) {
+      await dbApi.createNotification({
+        toUserId: date.withPartnerId,
+        type: 'date_cancelled',
+        dateId: date.id,
+        dateTitle: date.hiddenFromPartner ? 'Surpresa' : date.title,
+        fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
+      })
+    }
+
     await refreshDates()
   }
 
@@ -378,12 +389,12 @@ export default function DateDetail() {
               </p>
             )}
             {(date.partnerHints ?? []).map((hint, i) => (
-              <div key={i} className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 group">
+              <div key={i} className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                 <Lightbulb size={12} className="text-amber-400 shrink-0" />
                 <span className="text-sm text-stone-700 flex-1">{hint}</span>
                 <button
                   onClick={() => removeHint(i)}
-                  className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-500 transition-all"
+                  className="text-stone-300 hover:text-red-500 active:text-red-500 transition-all p-1 -mr-1"
                 >
                   <X size={13} />
                 </button>
@@ -486,20 +497,20 @@ export default function DateDetail() {
           {expenses.length > 0 && (
             <div className="mx-4 mb-3 divide-y divide-stone-100 border border-stone-100 rounded-lg overflow-hidden">
               {expenses.map(exp => (
-                <div key={exp.id} className="flex items-center justify-between px-3 py-2.5 group">
-                  <span className="text-sm text-stone-700 truncate flex-1">{exp.label}</span>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <span className="text-sm font-medium text-stone-800">{fmt(exp.amount)}</span>
-                    {!isDone && (
-                      <button
-                        onClick={() => removeExpense(exp.id)}
-                        className="opacity-0 group-hover:opacity-100 text-stone-300 hover:text-red-500 transition-all"
-                      >
-                        <Trash size={13} />
-                      </button>
-                    )}
+                <div key={exp.id} className="flex items-center justify-between px-3 py-2.5">
+                    <span className="text-sm text-stone-700 truncate flex-1">{exp.label}</span>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span className="text-sm font-medium text-stone-800">{fmt(exp.amount)}</span>
+                      {!isDone && (
+                        <button
+                          onClick={() => removeExpense(exp.id)}
+                          className="text-stone-300 hover:text-red-500 active:text-red-500 transition-all"
+                        >
+                          <Trash size={13} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
               ))}
             </div>
           )}
@@ -776,7 +787,7 @@ export default function DateDetail() {
             </button>
           </>
         )}
-        {date.status === 'waiting_reply' && (
+        {date.status === 'waiting_reply' && date.partnerDecision !== 'declined' && (
           <>
             <button onClick={() => setStatus('waiting_courage')} className="btn-ghost flex-1 justify-center">
               <RotateCcw size={13} />
@@ -785,6 +796,18 @@ export default function DateDetail() {
             <button onClick={() => setStatus('confirmed')} className="btn-secondary flex-1 justify-center text-emerald-700">
               <Heart size={13} />
               Confirmado!
+            </button>
+          </>
+        )}
+        {date.status === 'waiting_reply' && date.partnerDecision === 'declined' && (
+          <>
+            <button onClick={() => setStatus('waiting_courage')} className="btn-ghost flex-1 justify-center">
+              <RotateCcw size={13} />
+              Tentar de novo
+            </button>
+            <button onClick={() => setStatus('cancelled')} className="btn-ghost flex-1 justify-center text-stone-500">
+              <Ban size={13} />
+              Cancelar date
             </button>
           </>
         )}
