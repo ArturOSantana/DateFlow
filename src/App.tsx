@@ -1,6 +1,7 @@
 
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import { usePushNotifications } from './hooks/usePushNotifications'
 
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
@@ -23,6 +24,8 @@ import PartnerViewPage from './pages/PartnerViewPage'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
+  // Registra token FCM e solicita permissão de push ao usuário logado
+  usePushNotifications(user?.uid ?? null)
 
   if (loading) {
     return (

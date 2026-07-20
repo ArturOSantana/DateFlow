@@ -18,6 +18,7 @@ import {
 export { deleteField }
 import { db } from './firebase'
 import type { AppNotification, DateEvent, Idea, NotificationType, Partnership, UserPreferences, PreferenceCategory } from '../types'
+import { sendPushToUser } from './pushNotifications'
 
 // ─── Dates ───────────────────────────────────────────────────────────────────
 
@@ -275,11 +276,19 @@ export async function createNotification(data: {
   dateValue?: string
   timeValue?: string
 }): Promise<void> {
+  // Salva a notificação in-app no Firestore
   await addDoc(collection(db, 'notifications'), {
     ...data,
     read: false,
     createdAt: Date.now(),
   })
+
+  // Envia push notification real para o dispositivo do destinatário
+  try {
+    await sendPushToUser(data)
+  } catch {
+    // Falha no push não deve bloquear o fluxo principal
+  }
 }
 
 export async function getNotifications(userId: string): Promise<AppNotification[]> {
