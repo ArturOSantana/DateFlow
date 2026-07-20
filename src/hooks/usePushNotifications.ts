@@ -1,61 +1,58 @@
 /**
  * usePushNotifications.ts
  *
- * Hook que:
- * 1. Solicita permissão de push ao usuário
- * 2. Obtém e persiste o FCM token no Firestore
- * 3. Mostra notificações em foreground como toast nativo do browser
- * 4. Limpa o token ao deslogar
+ * 1. Solicita permissão de notificação ao usuário
+ * 2. Registra o service worker e passa o userId para ele monitorar o Firestore
+ * 3. Exibe notificações nativas quando o app está aberto (via onSnapshot)
+ * 4. Limpa a assinatura ao deslogar
  */
 
 import { useEffect, useRef } from 'react'
 import {
   requestPushPermission,
-  saveFcmToken,
-  removeFcmToken,
-  listenForegroundMessages,
+  listenIncomingNotifications,
 } from '../lib/pushNotifications'
-import { getMessagingInstance } from '../lib/firebase'
 
 export function usePushNotifications(userId: string | null) {
-  const tokenRef = useRef<string | null>(null)
   const unsubRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     if (!userId) {
-      // Limpa token ao deslogar
-      if (tokenRef.current) {
-        removeFcmToken(userId ?? '', tokenRef.current).catch(() => {})
-        tokenRef.current = null
-      }
+      // Limpa ao deslogar
       unsubRef.current?.()
       unsubRef.current = null
+      // Avisa o service worker para parar de monitorar
+      navigator.serviceWorker?.ready.then(reg => {
+        reg.active?.postMessage({ type: 'CLEAR_USER' })
+      }).catch(() => {})
       return
     }
 
     let cancelled = false
 
     async function setup() {
-      const token = await requestPushPermission()
-      if (cancelled || !token) return
+      // Solicita permissão e registra o SW (passa userId para o SW)
+      await requestPushPermission(userId!)
+      if (cancelled) return
 
-      tokenRef.current = token
-      await saveFcmToken(userId!, token)
-
-      // Escuta mensagens quando o app está em foreground
-      const messaging = await getMessagingInstance()
-      if (!messaging || cancelled) return
-
-      unsubRef.current = listenForegroundMessages(messaging, (title, body) => {
-        // Usa a Notifications API nativa para mostrar o toast mesmo em foreground
-        if (Notification.permission === 'granted') {
-          new Notification(title, {
-            body,
-            icon: '/favicon.svg',
-            badge: '/favicon.svg',
-            tag: 'dateflow-foreground',
-          })
+      // Listener em foreground: quando o app está aberto, exibe toast nativo
+      unsubRef.current = listenIncomingNotifications(userId!, (title, body, url) => {
+        if (document.visibilityState === 'visible') {
+          // App em foco: exibe via Notifications API nativa (banner do sistema)
+          if (Notification.permission === 'granted') {
+            const notif = new Notification(title, {
+              body,
+              icon: '/favicon.svg',
+              badge: '/favicon.svg',
+              tag: 'dateflow-foreground',
+            })
+            notif.onclick = () => {
+              window.focus()
+              window.location.pathname = url
+            }
+          }
         }
+        // Se app minimizado/fechado: o service worker já cuida via onSnapshot
       })
     }
 
