@@ -75,17 +75,24 @@ export interface DateEvent {
 // ─── Notificações in-app ──────────────────────────────────────────────────────
 
 export type NotificationType =
-  | 'date_accepted'   // parceiro aceitou o date
-  | 'date_declined'   // parceiro recusou o date
-  | 'date_cancelled'  // date foi cancelado
-  | 'date_changed'    // data/horário do date mudou
+  | 'date_accepted'    // parceiro aceitou o date
+  | 'date_declined'    // parceiro recusou o date
+  | 'date_cancelled'   // date foi cancelado
+  | 'date_changed'     // data/horário do date mudou
+  | 'date_created'     // novo date criado com a parceira vinculada
+  | 'date_confirmed'   // dono confirmou o date
+  | 'date_done'        // date marcado como realizado
+  | 'invite_accepted'  // parceira aceitou o convite de parceria
+  | 'invite_rejected'  // parceira recusou o convite de parceria
+  | 'partner_note'     // parceira deixou uma observação no date
+  | 'partner_rated'    // parceira avaliou o date
 
 export interface AppNotification {
   id: string
   /** UID do usuário que deve receber a notificação */
   toUserId: string
   type: NotificationType
-  /** ID do date relacionado */
+  /** ID do date relacionado (vazio para notificações de parceria) */
   dateId: string
   /** Título do date (para mostrar na notificação) */
   dateTitle: string
@@ -97,6 +104,8 @@ export interface AppNotification {
   dateValue?: string
   /** Novo horário do date, quando aplicável */
   timeValue?: string
+  /** Avaliação em estrelas (para partner_rated) */
+  rating?: number
   read: boolean
   createdAt: number
 }

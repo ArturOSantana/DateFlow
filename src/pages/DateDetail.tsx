@@ -190,14 +190,38 @@ export default function DateDetail() {
     if (!date || !user) return
     await dbApi.updateDate(date.id, { status })
 
-    if (status === 'cancelled' && date.withPartnerId) {
-      await dbApi.createNotification({
-        toUserId: date.withPartnerId,
-        type: 'date_cancelled',
-        dateId: date.id,
-        dateTitle: date.hiddenFromPartner ? 'Surpresa' : date.title,
-        fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
-      })
+    const fromName = user.displayName ?? user.email ?? 'Parceiro(a)'
+    const dateTitle = date.hiddenFromPartner ? 'Surpresa' : date.title
+
+    // Notificações para a parceira vinculada
+    if (date.withPartnerId && date.withPartnerId !== user.uid) {
+      if (status === 'cancelled') {
+        await dbApi.createNotification({
+          toUserId: date.withPartnerId,
+          type: 'date_cancelled',
+          dateId: date.id,
+          dateTitle,
+          fromName,
+        })
+      } else if (status === 'confirmed') {
+        await dbApi.createNotification({
+          toUserId: date.withPartnerId,
+          type: 'date_confirmed',
+          dateId: date.id,
+          dateTitle,
+          fromName,
+          dateValue: date.date,
+          timeValue: date.time,
+        })
+      } else if (status === 'done') {
+        await dbApi.createNotification({
+          toUserId: date.withPartnerId,
+          type: 'date_done',
+          dateId: date.id,
+          dateTitle,
+          fromName,
+        })
+      }
     }
 
     await refreshDates()

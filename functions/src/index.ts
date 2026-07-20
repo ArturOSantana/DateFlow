@@ -11,6 +11,13 @@ type NotificationType =
   | 'date_declined'
   | 'date_cancelled'
   | 'date_changed'
+  | 'date_created'
+  | 'date_confirmed'
+  | 'date_done'
+  | 'invite_accepted'
+  | 'invite_rejected'
+  | 'partner_note'
+  | 'partner_rated'
 
 interface SendPushPayload {
   toUserId: string
@@ -21,6 +28,7 @@ interface SendPushPayload {
   reason?: string
   dateValue?: string
   timeValue?: string
+  rating?: number
 }
 
 const LABELS: Record<NotificationType, {
@@ -46,6 +54,36 @@ const LABELS: Record<NotificationType, {
     body: (from, title, extra) =>
       extra ? `${from} alterou "${title}" para ${extra}` : `${from} alterou o date "${title}"`,
   },
+  date_created: {
+    title: '🆕 Novo date pra vocês!',
+    body: (from, title) => `${from} criou um novo date: "${title}"`,
+  },
+  date_confirmed: {
+    title: '✅ Date confirmado!',
+    body: (from, title) => `${from} confirmou o date "${title}"`,
+  },
+  date_done: {
+    title: '🎉 Date realizado!',
+    body: (from, title) => `${from} marcou "${title}" como realizado. Como foi?`,
+  },
+  invite_accepted: {
+    title: '🤝 Convite aceito!',
+    body: (from) => `${from} aceitou seu convite de parceria`,
+  },
+  invite_rejected: {
+    title: '💔 Convite recusado',
+    body: (from, _, reason) =>
+      reason ? `${from} recusou o convite: ${reason}` : `${from} recusou seu convite de parceria`,
+  },
+  partner_note: {
+    title: '📝 Nova observação',
+    body: (from, title) => `${from} deixou uma observação no date "${title}"`,
+  },
+  partner_rated: {
+    title: '⭐ Avaliação recebida',
+    body: (from, title, extra) =>
+      extra ? `${from} avaliou "${title}" com ${extra}` : `${from} avaliou o date "${title}"`,
+  },
 }
 
 /**
@@ -66,7 +104,7 @@ export const sendPushNotification = onCall(
     const data = request.data as SendPushPayload
 
     // Validação básica do payload
-    if (!data.toUserId || !data.type || !data.dateId) {
+    if (!data.toUserId || !data.type) {
       throw new HttpsError('invalid-argument', 'Payload inválido.')
     }
 
@@ -92,6 +130,8 @@ export const sendPushNotification = onCall(
       }
       if (data.timeValue) parts.push(`às ${data.timeValue}`)
       extra = parts.join(' ')
+    } else if (data.type === 'partner_rated' && data.rating) {
+      extra = `${data.rating} ⭐`
     } else if (data.reason) {
       extra = data.reason
     }

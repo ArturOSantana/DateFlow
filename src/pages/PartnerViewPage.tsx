@@ -210,6 +210,14 @@ export default function PartnerViewPage() {
       recipientName: user.displayName ?? 'Usuária',
       recipientPhoto: user.photoURL ?? null,
     })
+    // Notifica quem enviou o convite
+    await dbApi.createNotification({
+      toUserId: pendingPartnership.requesterId,
+      type: 'invite_accepted',
+      dateId: '',
+      dateTitle: '',
+      fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
+    })
     setAcceptingInvite(false)
     setInviteAccepted(true)
 
@@ -223,12 +231,22 @@ export default function PartnerViewPage() {
   async function rejectInvite() {
     if (!user || !pendingPartnership) return
     setRejectingInvite(true)
+    const reason = rejectReason.trim() || undefined
     await dbApi.updatePartnership(pendingPartnership.id, {
       status: 'rejected',
       recipientId: user.uid,
       recipientName: user.displayName ?? 'Usuária',
       recipientPhoto: user.photoURL ?? null,
-      rejectionReason: rejectReason.trim() || undefined,
+      rejectionReason: reason,
+    })
+    // Notifica quem enviou o convite
+    await dbApi.createNotification({
+      toUserId: pendingPartnership.requesterId,
+      type: 'invite_rejected',
+      dateId: '',
+      dateTitle: '',
+      fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
+      reason,
     })
     setRejectingInvite(false)
     setInviteRejected(true)
@@ -268,18 +286,40 @@ export default function PartnerViewPage() {
 
   async function saveNote(dateId: string) {
     const note = (notes[dateId] ?? '').trim()
+    if (!note) return
     setSavingNote(prev => ({ ...prev, [dateId]: true }))
-    const noteUpdate: Partial<DateEvent> = {}
-    if (note) noteUpdate.partnerNote = note
-    await dbApi.updateDate(dateId, noteUpdate)
+    const targetDate = dates.find(d => d.id === dateId)
+    await dbApi.updateDate(dateId, { partnerNote: note })
+    // Notifica o dono do date
+    if (targetDate) {
+      await dbApi.createNotification({
+        toUserId: targetDate.userId,
+        type: 'partner_note',
+        dateId,
+        dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,
+        fromName: user?.displayName ?? user?.email ?? 'Parceiro(a)',
+      })
+    }
     setSavingNote(prev => ({ ...prev, [dateId]: false }))
     setSavedNote(prev => ({ ...prev, [dateId]: true }))
     setTimeout(() => setSavedNote(prev => ({ ...prev, [dateId]: false })), 2000)
   }
 
   async function savePartnerRating(dateId: string, stars: number) {
+    const targetDate = dates.find(d => d.id === dateId)
     await dbApi.updateDate(dateId, { partnerRating: stars })
     setDates(prev => prev.map(d => d.id === dateId ? { ...d, partnerRating: stars } : d))
+    // Notifica o dono do date
+    if (targetDate) {
+      await dbApi.createNotification({
+        toUserId: targetDate.userId,
+        type: 'partner_rated',
+        dateId,
+        dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,
+        fromName: user?.displayName ?? user?.email ?? 'Parceiro(a)',
+        rating: stars,
+      })
+    }
   }
 
   async function savePartnerReview(dateId: string, text: string) {

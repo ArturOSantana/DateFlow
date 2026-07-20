@@ -268,12 +268,28 @@ export default function PartnerPage() {
       recipientName: user.displayName ?? 'Usuário',
       recipientPhoto: user.photoURL ?? null,
     })
+    // Notifica quem enviou o convite
+    await dbApi.createNotification({
+      toUserId: p.requesterId,
+      type: 'invite_accepted',
+      dateId: '',
+      dateTitle: '',
+      fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
+    })
     await load()
   }
 
   async function rejectInvite(p: Partnership) {
     if (!user) return
     await dbApi.updatePartnership(p.id, { status: 'rejected' })
+    // Notifica quem enviou o convite
+    await dbApi.createNotification({
+      toUserId: p.requesterId,
+      type: 'invite_rejected',
+      dateId: '',
+      dateTitle: '',
+      fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
+    })
     await load()
   }
 

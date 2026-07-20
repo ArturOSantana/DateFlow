@@ -132,8 +132,9 @@ export default function DateForm() {
         if (dateChanged) {
           const fromName = user?.displayName ?? user?.email ?? 'Parceiro(a)'
           const notificationTargets = new Set<string>()
-          notificationTargets.add(existing.userId)
-          if (existing.withPartnerId) notificationTargets.add(existing.withPartnerId)
+          // Notifica o outro usuário (não quem está editando)
+          if (existing.userId !== user!.uid && existing.userId) notificationTargets.add(existing.userId)
+          if (existing.withPartnerId && existing.withPartnerId !== user!.uid) notificationTargets.add(existing.withPartnerId)
 
           await Promise.all([...notificationTargets].map(toUserId =>
             dbApi.createNotification({
@@ -148,11 +149,23 @@ export default function DateForm() {
           ))
         }
       } else {
-        await dbApi.createDate({
+        const newId = await dbApi.createDate({
           ...form,
           userId: user!.uid,
           shareToken: generateShareToken(),
         })
+        // Notifica a parceira quando um novo date é criado com ela vinculada
+        if (form.withPartnerId) {
+          await dbApi.createNotification({
+            toUserId: form.withPartnerId,
+            type: 'date_created',
+            dateId: newId,
+            dateTitle: form.hiddenFromPartner ? 'Surpresa' : form.title,
+            fromName: user?.displayName ?? user?.email ?? 'Parceiro(a)',
+            dateValue: form.date,
+            timeValue: form.time,
+          })
+        }
       }
       await refreshDates()
       navigate('/dates')

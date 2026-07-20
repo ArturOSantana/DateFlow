@@ -55,6 +55,34 @@ const LABELS = {
         title: '📅 Date alterado',
         body: (from, title, extra) => extra ? `${from} alterou "${title}" para ${extra}` : `${from} alterou o date "${title}"`,
     },
+    date_created: {
+        title: '🆕 Novo date pra vocês!',
+        body: (from, title) => `${from} criou um novo date: "${title}"`,
+    },
+    date_confirmed: {
+        title: '✅ Date confirmado!',
+        body: (from, title) => `${from} confirmou o date "${title}"`,
+    },
+    date_done: {
+        title: '🎉 Date realizado!',
+        body: (from, title) => `${from} marcou "${title}" como realizado. Como foi?`,
+    },
+    invite_accepted: {
+        title: '🤝 Convite aceito!',
+        body: (from) => `${from} aceitou seu convite de parceria`,
+    },
+    invite_rejected: {
+        title: '💔 Convite recusado',
+        body: (from, _, reason) => reason ? `${from} recusou o convite: ${reason}` : `${from} recusou seu convite de parceria`,
+    },
+    partner_note: {
+        title: '📝 Nova observação',
+        body: (from, title) => `${from} deixou uma observação no date "${title}"`,
+    },
+    partner_rated: {
+        title: '⭐ Avaliação recebida',
+        body: (from, title, extra) => extra ? `${from} avaliou "${title}" com ${extra}` : `${from} avaliou o date "${title}"`,
+    },
 };
 /**
  * Callable function: recebe o payload de notificação do cliente,
@@ -70,7 +98,7 @@ exports.sendPushNotification = (0, https_1.onCall)({ region: 'southamerica-east1
     }
     const data = request.data;
     // Validação básica do payload
-    if (!data.toUserId || !data.type || !data.dateId) {
+    if (!data.toUserId || !data.type) {
         throw new https_1.HttpsError('invalid-argument', 'Payload inválido.');
     }
     // Busca todos os FCM tokens do destinatário
@@ -92,6 +120,9 @@ exports.sendPushNotification = (0, https_1.onCall)({ region: 'southamerica-east1
         if (data.timeValue)
             parts.push(`às ${data.timeValue}`);
         extra = parts.join(' ');
+    }
+    else if (data.type === 'partner_rated' && data.rating) {
+        extra = `${data.rating} ⭐`;
     }
     else if (data.reason) {
         extra = data.reason;

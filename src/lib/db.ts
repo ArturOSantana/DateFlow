@@ -275,6 +275,7 @@ export async function createNotification(data: {
   reason?: string
   dateValue?: string
   timeValue?: string
+  rating?: number
 }): Promise<void> {
   // Salva a notificação in-app no Firestore
   await addDoc(collection(db, 'notifications'), {
