@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Flame, ChevronRight, RefreshCw, Trophy, Star, Copy, CheckCheck, Share2, Ban, Crown } from 'lucide-react'
+import { ArrowLeft, Flame, ChevronRight, RefreshCw, Trophy, Star, Copy, CheckCheck, Share2, Ban, Crown, HelpCircle } from 'lucide-react'
+import { useGameTutorial } from '../hooks/useGameTutorial'
+import GameTutorial from '../components/GameTutorial'
 import { useAuth } from '../contexts/AuthContext'
 import {
   createBrasaSession,
@@ -533,10 +535,30 @@ function EndScreen({ session, onRestart }: { session: BrasaSession; onRestart: (
 
 type LocalScreen = 'setup' | 'waiting' | 'playing' | 'bonus_unlock' | 'final' | 'end' | 'cancelled'
 
+const BRASA_TUTORIAL_STEPS = [
+  {
+    title: 'Bem-vindos ao Brasa!',
+    text: 'Brasa é um jogo de conexão a dois. Cada rodada, uma carta aparece com uma pergunta ou atividade. Os dois respondem e revelam as respostas ao mesmo tempo.',
+  },
+  {
+    title: 'Como jogar',
+    text: 'Um jogador cria a sala e compartilha o código. O outro entra com o código. Cada um usa seu próprio celular — as respostas são individuais e simultâneas.',
+  },
+  {
+    title: 'A barra de Brasa',
+    text: 'A cada carta respondida, a barra de Brasa sobe. Quando atingir 80, a Rodada Bônus é desbloqueada. Em 100, o Desafio Final aparece!',
+  },
+  {
+    title: 'Atos',
+    text: 'O jogo tem 3 atos de profundidade crescente: Ato I (Superfície), Ato II (Profundeza) e Ato III (Brasa). O tema das perguntas vai ficando mais íntimo.',
+  },
+]
+
 export default function BrasaPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
+  const tutorial = useGameTutorial('brasa', BRASA_TUTORIAL_STEPS)
   const [screen, setScreen] = useState<LocalScreen>('setup')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -731,6 +753,19 @@ export default function BrasaPage() {
     : null
 
   return (
+    <>
+      <GameTutorial
+        open={tutorial.open}
+        steps={tutorial.steps}
+        stepIdx={tutorial.stepIdx}
+        onClose={tutorial.close}
+        onNext={tutorial.next}
+        onPrev={tutorial.prev}
+        accentColor="bg-stone-900"
+        accentBorder="border-orange-200"
+        accentBg="bg-orange-50"
+        accentText="text-orange-900"
+      />
     <div className="flex flex-col min-h-full">
 
       {/* Topbar */}
@@ -761,6 +796,13 @@ export default function BrasaPage() {
               <span className="text-xs font-bold text-stone-700">{session.p1Pts + session.p2Pts}</span>
             </div>
           )}
+          <button
+            onClick={tutorial.openTutorial}
+            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-stone-100 transition-colors shrink-0 text-stone-400 hover:text-stone-700"
+            aria-label="Ver tutorial"
+          >
+            <HelpCircle size={18} />
+          </button>
         </div>
         {error && <p className="text-xs text-red-500 mt-2 pl-11">{error}</p>}
       </div>
@@ -818,5 +860,6 @@ export default function BrasaPage() {
         )}
       </div>
     </div>
+    </>
   )
 }

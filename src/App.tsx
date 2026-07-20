@@ -15,6 +15,14 @@ import IdeasPage from './pages/IdeasPage'
 import DrawPage from './pages/DrawPage'
 import ScratchPage from './pages/ScratchPage'
 import BrasaPage from './pages/BrasaPage'
+import GamesHubPage from './pages/GamesHubPage'
+import VerdadesGame from './pages/games/VerdadesGame'
+import FraseGame from './pages/games/FraseGame'
+import NuncaFizGame from './pages/games/NuncaFizGame'
+import AudioGame from './pages/games/AudioGame'
+import EstaOuAquelaGame from './pages/games/EstaOuAquelaGame'
+import DrinkGame from './pages/games/DrinkGame'
+import EuNuncaGame from './pages/games/EuNuncaGame'
 import HistoryPage from './pages/HistoryPage'
 import FinancePage from './pages/FinancePage'
 import ProfilePage from './pages/ProfilePage'
@@ -72,6 +80,14 @@ export default function App() {
         <Route path="/ideas/draw" element={<DrawPage />} />
         <Route path="/ideas/scratch" element={<ScratchPage />} />
         <Route path="/ideas/brasa" element={<BrasaPage />} />
+        <Route path="/ideas/games" element={<GamesHubPage />} />
+        <Route path="/ideas/games/verdades" element={<VerdadesGame />} />
+        <Route path="/ideas/games/frase" element={<FraseGame />} />
+        <Route path="/ideas/games/nuncafiz" element={<NuncaFizGame />} />
+        <Route path="/ideas/games/audio" element={<AudioGame />} />
+        <Route path="/ideas/games/estaouaquela" element={<EstaOuAquelaGame />} />
+        <Route path="/ideas/games/drink" element={<DrinkGame />} />
+        <Route path="/ideas/games/eununca" element={<EuNuncaGame />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/profile" element={<ProfilePage />} />

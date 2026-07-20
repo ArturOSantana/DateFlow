@@ -436,3 +436,78 @@ export function subscribeBrasaSession(
     if (snap.exists()) callback({ id: snap.id, ...snap.data() } as BrasaSession)
   })
 }
+
+// ─── Game Sessions (Verdades, Frase, NuncaFiz, EstaOuAquela) ─────────────────
+
+export interface GameSession {
+  id: string
+  game: string           // 'verdades' | 'frase' | 'nuncafiz' | 'estaouaquela'
+  code: string           // 4 letras
+  p1Name: string
+  p2Name?: string
+  status: 'waiting' | 'playing' | 'done'
+  /** Estado do jogo serializado como JSON */
+  state: string
+  /** Quem pode avançar fases (sempre p1 = host) */
+  hostAction?: string    // ação pendente do host
+  updatedAt: number
+  createdAt: number
+}
+
+export async function createGameSession(
+  game: string,
+  p1Name: string,
+  code: string,
+  initialState: object,
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'gameSessions'), {
+    game,
+    code: code.toUpperCase(),
+    p1Name,
+    status: 'waiting',
+    state: JSON.stringify(initialState),
+    updatedAt: Date.now(),
+    createdAt: Date.now(),
+  } satisfies Omit<GameSession, 'id'>)
+  return ref.id
+}
+
+export async function getGameSessionByCode(game: string, code: string): Promise<GameSession | null> {
+  const q = query(
+    collection(db, 'gameSessions'),
+    where('game', '==', game),
+    where('code', '==', code.toUpperCase()),
+    where('status', '==', 'waiting'),
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return { id: d.id, ...d.data() } as GameSession
+}
+
+export async function joinGameSession(sessionId: string, p2Name: string): Promise<void> {
+  await updateDoc(doc(db, 'gameSessions', sessionId), {
+    p2Name,
+    status: 'playing',
+    updatedAt: Date.now(),
+  })
+}
+
+export async function updateGameSession(
+  sessionId: string,
+  data: Partial<Omit<GameSession, 'id' | 'createdAt'>>,
+): Promise<void> {
+  await updateDoc(doc(db, 'gameSessions', sessionId), {
+    ...data,
+    updatedAt: Date.now(),
+  })
+}
+
+export function subscribeGameSession(
+  sessionId: string,
+  callback: (session: GameSession) => void,
+): Unsubscribe {
+  return onSnapshot(doc(db, 'gameSessions', sessionId), snap => {
+    if (snap.exists()) callback({ id: snap.id, ...snap.data() } as GameSession)
+  })
+}
