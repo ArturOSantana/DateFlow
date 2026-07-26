@@ -62,7 +62,16 @@ jobs:
         run: |
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
 
-      # 10. Upload para Firebase App Distribution
+      # 10. Build APK de release
+      - name: Assemble release APK
+        run: ./android/gradlew -p android assembleRelease
+        env:
+          KEYSTORE_PATH: dateflow-release.jks
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASS }}
+
+      # 11. Upload para Firebase App Distribution
       - name: Upload to Firebase App Distribution
         run: ./android/gradlew -p android appDistributionUploadRelease
         env:
@@ -74,7 +83,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASS }}
 
-      # 11. Salvar APK como artefato (opcional — fica disponível no Actions por 7 dias)
+      # 12. Salvar APK como artefato (opcional — fica disponível no Actions por 7 dias)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
