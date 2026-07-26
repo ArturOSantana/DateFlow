@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   deleteField,
   type Unsubscribe,
@@ -370,6 +371,69 @@ export async function getIncomingDates(viewerUid: string): Promise<DateEvent[]> 
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as DateEvent))
 }
 
+export interface PartnerBootstrap {
+  partnerGender: import('../types').PartnerGender | undefined
+  ownerGender: import('../types').PartnerGender | undefined
+  incomingDates: DateEvent[]
+  partnerName: string
+}
+
+/**
+ * Busca em paralelo tudo o que depende da parceria ativa:
+ * - gênero do parceiro (do doc userPreferences do parceiro)
+ * - gênero do próprio usuário (do doc userPreferences do usuário)
+ * - dates planejados pelo parceiro para o usuário
+ * - nome do parceiro
+ *
+ * Substitui as três chamadas separadas de refreshPartnerGender,
+ * refreshOwnerGender e refreshIncomingDates — economiza 2 reads de
+ * `partnerships` e 1 getDoc de `userPreferences` por sessão.
+ */
+export async function getPartnerBootstrap(
+  userId: string,
+  userEmail?: string,
+): Promise<PartnerBootstrap> {
+  const [partnerships, ownerSnap] = await Promise.all([
+    getMyPartnerships(userId, userEmail),
+    getDoc(doc(db, 'userPreferences', userId)),
+  ])
+
+  const ownerGender = ownerSnap.exists()
+    ? (ownerSnap.data() as import('../types').UserPreferences).ownerGender
+    : undefined
+
+  const active = partnerships.find(p => p.status === 'accepted')
+  if (!active) {
+    return { partnerGender: undefined, ownerGender, incomingDates: [], partnerName: '' }
+  }
+
+  const partnerId   = active.requesterId === userId ? active.recipientId   : active.requesterId
+  const partnerName = active.requesterId === userId ? (active.recipientName || active.recipientEmail)
+                                                    : (active.requesterName || active.requesterEmail)
+
+  if (!partnerId) {
+    return { partnerGender: undefined, ownerGender, incomingDates: [], partnerName: '' }
+  }
+
+  const [partnerSnap, incomingSnap] = await Promise.all([
+    getDoc(doc(db, 'userPreferences', partnerId)),
+    getDocs(query(
+      collection(db, 'dates'),
+      where('userId', '==', partnerId),
+      where('withPartnerId', '==', userId),
+      orderBy('date', 'asc'),
+    )),
+  ])
+
+  const partnerGender = partnerSnap.exists()
+    ? (partnerSnap.data() as import('../types').UserPreferences).ownerGender
+    : undefined
+
+  const incomingDates = incomingSnap.docs.map(d => ({ id: d.id, ...d.data() } as DateEvent))
+
+  return { partnerGender, ownerGender, incomingDates, partnerName }
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 // Tipos que já recebem e-mail separado via callSendEmailInvite (com .ics)
@@ -428,11 +492,12 @@ export async function createNotification(data: {
   }
 }
 
-export async function getNotifications(userId: string): Promise<AppNotification[]> {
+export async function getNotifications(userId: string, maxDocs = 30): Promise<AppNotification[]> {
   const q = query(
     collection(db, 'notifications'),
     where('toUserId', '==', userId),
     orderBy('createdAt', 'desc'),
+    limit(maxDocs),
   )
   const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification))

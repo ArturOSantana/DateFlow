@@ -11,14 +11,19 @@ interface AppContextType {
   refreshIdeas: () => Promise<void>
   /** Gênero da parceria ativa (como o usuário chama a outra pessoa: ela/ele) */
   partnerGender: PartnerGender | undefined
-  refreshPartnerGender: () => Promise<void>
   /** Gênero do próprio usuário logado (como ele/ela aparece para a outra pessoa) */
   ownerGender: PartnerGender | undefined
-  refreshOwnerGender: () => Promise<void>
   /** Dates planejados pelo parceiro/parceira para o usuário logado */
   incomingDates: DateEvent[]
   /** Nome do parceiro/parceira que planejou os incomingDates */
   partnerName: string
+  /** Recarrega todos os dados que dependem da parceria ativa de uma vez */
+  refreshPartnerData: () => Promise<void>
+  /** @deprecated use refreshPartnerData */
+  refreshPartnerGender: () => Promise<void>
+  /** @deprecated use refreshPartnerData */
+  refreshOwnerGender: () => Promise<void>
+  /** @deprecated use refreshPartnerData */
   refreshIncomingDates: () => Promise<void>
 }
 
@@ -46,37 +51,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIdeas(data)
   }, [user])
 
-  const refreshPartnerGender = useCallback(async () => {
+  /**
+   * Busca tudo que depende da parceria com um único round de reads ao Firestore:
+   * partnerships (1 query) + ownerGender (1 getDoc) → se há parceiro ativo:
+   * partnerGender (1 getDoc) + incomingDates (1 query) em paralelo.
+   */
+  const refreshPartnerData = useCallback(async () => {
     if (!user) return
-    const all = await db.getMyPartnerships(user.uid, user.email ?? undefined)
-    const active = all.find(p => p.status === 'accepted')
-    if (!active) { setPartnerGender(undefined); return }
-    // Usa o gênero que o próprio parceiro definiu no perfil dele
-    const partnerId = active.requesterId === user.uid ? active.recipientId : active.requesterId
-    if (!partnerId) { setPartnerGender(undefined); return }
-    const gender = await db.getUserGender(partnerId)
-    setPartnerGender(gender)
+    const { partnerGender, ownerGender, incomingDates, partnerName } =
+      await db.getPartnerBootstrap(user.uid, user.email ?? undefined)
+    setPartnerGender(partnerGender)
+    setOwnerGender(ownerGender)
+    setIncomingDates(incomingDates)
+    setPartnerName(partnerName)
   }, [user])
 
-  const refreshOwnerGender = useCallback(async () => {
-    if (!user) return
-    const g = await db.getUserGender(user.uid)
-    setOwnerGender(g)
-  }, [user])
-
-  const refreshIncomingDates = useCallback(async () => {
-    if (!user) return
-    const all = await db.getMyPartnerships(user.uid, user.email ?? undefined)
-    const active = all.find(p => p.status === 'accepted')
-    if (!active) { setIncomingDates([]); setPartnerName(''); return }
-    const ownerId = active.requesterId === user.uid ? active.recipientId : active.requesterId
-    const name    = active.requesterId === user.uid ? active.recipientName : active.requesterName
-    const email   = active.requesterId === user.uid ? active.recipientEmail : active.requesterEmail
-    if (!ownerId) { setIncomingDates([]); setPartnerName(''); return }
-    const data = await db.getDatesByOwnerForViewer(ownerId, user.uid)
-    setIncomingDates(data)
-    setPartnerName(name || email || '')
-  }, [user])
+  // Aliases de compatibilidade para código existente que chama os três refreshes separados
+  const refreshPartnerGender  = refreshPartnerData
+  const refreshOwnerGender    = refreshPartnerData
+  const refreshIncomingDates  = refreshPartnerData
 
   useEffect(() => {
     if (!user) {
@@ -92,19 +85,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     Promise.all([
       refreshDates(),
       refreshIdeas(),
-      refreshPartnerGender(),
-      refreshOwnerGender(),
-      refreshIncomingDates(),
+      refreshPartnerData(),
     ]).finally(() => setLoading(false))
-  }, [user, refreshDates, refreshIdeas, refreshPartnerGender, refreshOwnerGender, refreshIncomingDates])
+  }, [user, refreshDates, refreshIdeas, refreshPartnerData])
 
   return (
     <AppContext.Provider value={{
       dates, ideas, loading,
       refreshDates, refreshIdeas,
-      partnerGender, refreshPartnerGender,
-      ownerGender, refreshOwnerGender,
-      incomingDates, partnerName, refreshIncomingDates,
+      partnerGender,
+      ownerGender,
+      incomingDates, partnerName,
+      refreshPartnerData,
+      refreshPartnerGender,
+      refreshOwnerGender,
+      refreshIncomingDates,
     }}>
       {children}
     </AppContext.Provider>
