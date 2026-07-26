@@ -48,21 +48,26 @@ jobs:
       - name: Capacitor sync
         run: npx cap sync android
 
-      # 7. Restaurar keystore de release (base64 → arquivo)
+      # 7. Gerar google-services.json a partir do secret
+      - name: Restore google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
+
+      # 8. Restaurar keystore de release (base64 → arquivo)
       - name: Restore keystore
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/dateflow-release.jks
 
-      # 8. Permissão de execução no gradlew
+      # 9. Permissão de execução no gradlew
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # 9. Incrementar versionCode automaticamente com o número do run
+      # 10. Incrementar versionCode automaticamente com o número do run
       - name: Set versionCode
         run: |
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
 
-      # 10. Build APK de release
+      # 11. Build APK de release
       - name: Assemble release APK
         run: ./android/gradlew -p android assembleRelease
         env:
@@ -71,19 +76,20 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASS }}
 
-      # 11. Upload para Firebase App Distribution
+      # 12. Upload para Firebase App Distribution
+      # O Firebase envia e-mail automaticamente para todos os membros do grupo
+      # configurado no secret FIREBASE_APP_DISTRIBUTION_GROUPS.
       - name: Upload to Firebase App Distribution
         run: ./android/gradlew -p android appDistributionUploadRelease
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_TESTERS: ${{ secrets.FIREBASE_TESTERS }}
           FIREBASE_APP_DISTRIBUTION_GROUPS: ${{ secrets.FIREBASE_APP_DISTRIBUTION_GROUPS }}
           KEYSTORE_PATH: ${{ github.workspace }}/android/app/dateflow-release.jks
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASS }}
 
-      # 12. Salvar APK como artefato (opcional — fica disponível no Actions por 7 dias)
+      # 13. Salvar APK como artefato (opcional — fica disponível no Actions por 7 dias)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
