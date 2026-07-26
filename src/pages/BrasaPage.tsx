@@ -168,7 +168,7 @@ function WaitingScreen({ code, onCancel }: { code: string; onCancel: () => void 
 
   function shareLink() {
     if (navigator.share) {
-      navigator.share({ title: 'Brasa 🔥', text: 'Vem jogar Brasa comigo!', url: link })
+      navigator.share({ title: 'Brasa', text: 'Vem jogar Brasa comigo!', url: link })
     } else {
       copyLink()
     }

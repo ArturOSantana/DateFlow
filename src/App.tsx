@@ -29,6 +29,7 @@ import ProfilePage from './pages/ProfilePage'
 import SharePage from './pages/SharePage'
 import PartnerPage from './pages/PartnerPage'
 import PartnerViewPage from './pages/PartnerViewPage'
+import WatchlistPage from './pages/WatchlistPage'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/partner" element={<PartnerPage />} />
         <Route path="/partner/view/:partnerId" element={<PartnerViewPage />} />
+        <Route path="/watchlist" element={<WatchlistPage />} />
       </Route>
 
       {/* Fallback */}

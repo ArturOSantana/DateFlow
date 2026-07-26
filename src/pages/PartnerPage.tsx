@@ -268,6 +268,8 @@ export default function PartnerPage() {
       recipientName: user.displayName ?? 'Usuário',
       recipientPhoto: user.photoURL ?? null,
     })
+    // Vincula preferências para leitura mútua via Firestore rules
+    await dbApi.linkPartnerPreferences(user.uid, p.requesterId)
     // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: p.requesterId,
@@ -282,6 +284,10 @@ export default function PartnerPage() {
   async function rejectInvite(p: Partnership) {
     if (!user) return
     await dbApi.updatePartnership(p.id, { status: 'rejected' })
+    // Remove o vínculo de preferências se havia sido criado
+    if (p.recipientId) {
+      await dbApi.unlinkPartnerPreferences(user.uid, p.requesterId).catch(() => {})
+    }
     // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: p.requesterId,
@@ -295,7 +301,12 @@ export default function PartnerPage() {
 
   async function removePartnership(id: string) {
     if (!window.confirm('Deseja remover essa parceria?')) return
+    const p = partnerships.find(x => x.id === id)
     await dbApi.deletePartnership(id)
+    // Remove o vínculo de preferências dos dois usuários
+    if (p && user && p.requesterId && p.recipientId) {
+      await dbApi.unlinkPartnerPreferences(p.requesterId, p.recipientId).catch(() => {})
+    }
     await load()
   }
 

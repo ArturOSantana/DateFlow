@@ -14,11 +14,37 @@ import {
   deleteField,
   type Unsubscribe,
 } from 'firebase/firestore'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 
 export { deleteField }
 import { db } from './firebase'
-import type { AppNotification, DateEvent, Idea, NotificationType, Partnership, UserPreferences, PreferenceCategory } from '../types'
+import type { AppNotification, DateEvent, Idea, NotificationType, Partnership, UserPreferences, PreferenceCategory, WatchlistItem, WatchlistReview } from '../types'
 import { sendPushToUser } from './pushNotifications'
+
+// ─── E-mail + convite de calendário ──────────────────────────────────────────
+
+export interface SendEmailInvitePayload {
+  dateId: string
+  toEmail: string
+  toName: string
+  fromName: string
+  type: 'date_created' | 'date_confirmed' | 'date_changed' | 'date_cancelled'
+  shareUrl?: string
+}
+
+/**
+ * Chama a Cloud Function `sendEmailInvite` para enviar e-mail com convite .ics.
+ * Falha silenciosamente — não deve bloquear o fluxo principal.
+ */
+export async function callSendEmailInvite(payload: SendEmailInvitePayload): Promise<void> {
+  try {
+    const functions = getFunctions(undefined, 'southamerica-east1')
+    const fn = httpsCallable(functions, 'sendEmailInvite')
+    await fn(payload)
+  } catch {
+    // Falha no e-mail não bloqueia o fluxo principal
+  }
+}
 
 // ─── Dates ───────────────────────────────────────────────────────────────────
 
@@ -233,6 +259,29 @@ export async function getUserPreferences(userId: string): Promise<PreferenceCate
 export async function saveUserPreferences(userId: string, preferences: PreferenceCategory): Promise<void> {
   const ref = doc(db, 'userPreferences', userId)
   await setDoc(ref, { userId, preferences, updatedAt: Date.now() }, { merge: true })
+}
+
+/**
+ * Grava o campo `partnerUid` no documento userPreferences de ambos os usuários,
+ * permitindo que cada um leia as preferências do outro via regra do Firestore.
+ * Chamado na aceitação da parceria.
+ */
+export async function linkPartnerPreferences(uidA: string, uidB: string): Promise<void> {
+  await Promise.all([
+    setDoc(doc(db, 'userPreferences', uidA), { partnerUid: uidB, updatedAt: Date.now() }, { merge: true }),
+    setDoc(doc(db, 'userPreferences', uidB), { partnerUid: uidA, updatedAt: Date.now() }, { merge: true }),
+  ])
+}
+
+/**
+ * Remove o campo `partnerUid` do documento userPreferences de ambos os usuários.
+ * Chamado na remoção/rejeição da parceria.
+ */
+export async function unlinkPartnerPreferences(uidA: string, uidB: string): Promise<void> {
+  await Promise.all([
+    setDoc(doc(db, 'userPreferences', uidA), { partnerUid: deleteField(), updatedAt: Date.now() }, { merge: true }),
+    setDoc(doc(db, 'userPreferences', uidB), { partnerUid: deleteField(), updatedAt: Date.now() }, { merge: true }),
+  ])
 }
 
 /** Retorna o gênero que o usuário definiu para si mesmo no perfil. */
@@ -509,5 +558,51 @@ export function subscribeGameSession(
 ): Unsubscribe {
   return onSnapshot(doc(db, 'gameSessions', sessionId), snap => {
     if (snap.exists()) callback({ id: snap.id, ...snap.data() } as GameSession)
+  })
+}
+
+// ─── Watchlist ────────────────────────────────────────────────────────────────
+
+export async function getWatchlist(coupleId1: string, _coupleId2: string): Promise<WatchlistItem[]> {
+  // Busca todos os itens onde o usuário atual é um dos membros do casal
+  const q = query(
+    collection(db, 'watchlist'),
+    where('coupleIds', 'array-contains', coupleId1),
+    orderBy('createdAt', 'desc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as WatchlistItem))
+}
+
+export async function addWatchlistItem(
+  data: Omit<WatchlistItem, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'watchlist'), {
+    ...data,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  })
+  return ref.id
+}
+
+export async function updateWatchlistItem(id: string, data: Partial<WatchlistItem>): Promise<void> {
+  await updateDoc(doc(db, 'watchlist', id), {
+    ...data,
+    updatedAt: Date.now(),
+  })
+}
+
+export async function deleteWatchlistItem(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'watchlist', id))
+}
+
+export async function setWatchlistReview(
+  itemId: string,
+  field: 'ownerReview' | 'partnerReview',
+  review: WatchlistReview,
+): Promise<void> {
+  await updateDoc(doc(db, 'watchlist', itemId), {
+    [field]: review,
+    updatedAt: Date.now(),
   })
 }

@@ -5,7 +5,7 @@ import {
   CalendarDays,
   Lightbulb,
   Users,
-  User,
+  Popcorn,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
@@ -33,11 +33,11 @@ export default function BottomNav() {
   const pg = getPronouns(partnerGender)
 
   const items = [
-    { to: '/',        icon: LayoutDashboard, label: 'Dashboard'     },
-    { to: '/dates',   icon: CalendarDays,    label: 'Dates'         },
-    { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'        },
-    { to: '/partner', icon: Users,           label: pg.Partner, badge: pendingCount },
-    { to: '/profile', icon: User,            label: 'Perfil'        },
+    { to: '/',           icon: LayoutDashboard, label: 'Dashboard'              },
+    { to: '/dates',      icon: CalendarDays,    label: 'Dates'                  },
+    { to: '/watchlist',  icon: Popcorn,         label: 'Filmes'                 },
+    { to: '/ideas',      icon: Lightbulb,       label: 'Ideias'                 },
+    { to: '/partner',    icon: Users,           label: pg.Partner, badge: pendingCount },
   ]
 
   return (

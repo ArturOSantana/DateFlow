@@ -49,6 +49,14 @@
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
     }
+    ,{
+      "collectionGroup": "watchlist",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coupleIds",  "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    }
   ],
   "fieldOverrides": []
 }

@@ -147,24 +147,69 @@ export default function DateForm() {
               timeValue: form.time,
             })
           ))
+
+          // Envia e-mail com convite atualizado para a parceira (se vinculada e tiver e-mail)
+          if (form.withPartnerId && form.withPartnerId !== user!.uid) {
+            const allPartners = await dbApi.getMyPartnerships(user!.uid, user!.email ?? undefined)
+            const p = allPartners.find(x =>
+              x.requesterId === form.withPartnerId || x.recipientId === form.withPartnerId
+            )
+            if (p) {
+              const isMe   = p.requesterId === user!.uid
+              const toEmail = isMe ? p.recipientEmail : p.requesterEmail
+              const toName  = isMe ? p.recipientName  : p.requesterName
+              if (toEmail) {
+                await dbApi.callSendEmailInvite({
+                  dateId:   id,
+                  toEmail,
+                  toName:   toName || toEmail,
+                  fromName,
+                  type:     'date_changed',
+                })
+              }
+            }
+          }
         }
       } else {
+        const shareToken = generateShareToken()
         const newId = await dbApi.createDate({
           ...form,
           userId: user!.uid,
-          shareToken: generateShareToken(),
+          shareToken,
         })
         // Notifica a parceira quando um novo date é criado com ela vinculada
         if (form.withPartnerId) {
+          const fromName = user?.displayName ?? user?.email ?? 'Parceiro(a)'
           await dbApi.createNotification({
             toUserId: form.withPartnerId,
             type: 'date_created',
             dateId: newId,
             dateTitle: form.hiddenFromPartner ? 'Surpresa' : form.title,
-            fromName: user?.displayName ?? user?.email ?? 'Parceiro(a)',
+            fromName,
             dateValue: form.date,
             timeValue: form.time,
           })
+
+          // Envia e-mail com convite .ics para a parceira
+          const allPartners = await dbApi.getMyPartnerships(user!.uid, user!.email ?? undefined)
+          const p = allPartners.find(x =>
+            x.requesterId === form.withPartnerId || x.recipientId === form.withPartnerId
+          )
+          if (p) {
+            const isMe    = p.requesterId === user!.uid
+            const toEmail = isMe ? p.recipientEmail : p.requesterEmail
+            const toName  = isMe ? p.recipientName  : p.requesterName
+            if (toEmail) {
+              await dbApi.callSendEmailInvite({
+                dateId:   newId,
+                toEmail,
+                toName:   toName || toEmail,
+                fromName,
+                type:     'date_created',
+                shareUrl: `${window.location.origin}/share/${shareToken}`,
+              })
+            }
+          }
         }
       }
       await refreshDates()
@@ -259,9 +304,6 @@ export default function DateForm() {
             value={form.budget ?? ''}
             onChange={e => set('budget', e.target.value === '' ? undefined : parseFloat(e.target.value))}
           />
-          <p className="text-xs text-stone-400 mt-1">
-            Os gastos reais são registrados durante o date, item por item.
-          </p>
         </div>
 
         {/* Com quem é esse date — só aparece se há parcerias aceitas com UID preenchido */}
@@ -361,7 +403,7 @@ export default function DateForm() {
                 <div className="flex gap-2">
                   <input
                     className="input flex-1 text-sm"
-                    placeholder="Ex: Vista algo confortável…"
+                    placeholder="Nova dica…"
                     value={newHint}
                     onChange={e => setNewHint(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addHint())}

@@ -13,6 +13,7 @@ import {
   Heart,
   Menu,
   X,
+  Popcorn,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
@@ -27,13 +28,14 @@ function NavContent({ onClose }: { onClose?: () => void }) {
   const pg = getPronouns(partnerGender)
 
   const navItems = [
-    { to: '/',        icon: LayoutDashboard, label: 'Dashboard'  },
-    { to: '/dates',   icon: CalendarDays,    label: 'Meus Dates' },
-    { to: '/ideas',   icon: Lightbulb,       label: 'Ideias'     },
-    { to: '/history', icon: History,         label: 'Histórico'  },
-    { to: '/finance', icon: Wallet,          label: 'Finanças'   },
-    { to: '/partner', icon: Users,           label: pg.Partner   },
-    { to: '/profile', icon: User,            label: 'Perfil'     },
+    { to: '/',           icon: LayoutDashboard, label: 'Dashboard'       },
+    { to: '/dates',      icon: CalendarDays,    label: 'Meus Dates'      },
+    { to: '/ideas',      icon: Lightbulb,       label: 'Ideias'          },
+    { to: '/watchlist',  icon: Popcorn,         label: 'Filmes & Séries' },
+    { to: '/history',    icon: History,         label: 'Histórico'       },
+    { to: '/finance',    icon: Wallet,          label: 'Finanças'        },
+    { to: '/partner',    icon: Users,           label: pg.Partner        },
+    { to: '/profile',    icon: User,            label: 'Perfil'          },
   ]
 
   function go(path: string) {

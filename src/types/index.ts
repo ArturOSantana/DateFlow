@@ -217,3 +217,52 @@ export const POST_DATE_QUESTIONS: QuickQuestion[] = [
   { id: 'feeling', text: 'Como você se sentiu?',           options: ['Especial', 'Feliz', 'Tranquilo/a', 'Um pouco ansioso/a'] },
   { id: 'moment',  text: 'Qual foi o melhor momento?',    options: undefined },
 ]
+
+// ─── Watchlist (Filmes & Séries) ──────────────────────────────────────────────
+
+export type WatchlistStatus = 'to_watch' | 'watched'
+export type WatchlistMediaType = 'movie' | 'tv'
+
+export interface WatchlistReview {
+  /** Avaliação de 1 a 5 estrelas */
+  rating: number
+  /** Comentário opcional */
+  comment?: string
+  /** Quando foi avaliado */
+  reviewedAt: number
+}
+
+export interface WatchlistItem {
+  id: string
+  /** UID de quem adicionou */
+  addedByUserId: string
+  /** Nome de quem adicionou */
+  addedByName: string
+  /** IDs dos dois usuários do casal (para query compartilhada) */
+  coupleIds: string[]
+  /** ID do TMDB */
+  tmdbId: number
+  title: string
+  originalTitle: string
+  mediaType: WatchlistMediaType
+  /** URL relativa do poster (ex: /abc123.jpg) */
+  posterPath: string | null
+  /** URL relativa do backdrop */
+  backdropPath: string | null
+  overview: string
+  /** Ano de lançamento */
+  releaseYear: string
+  /** Nota do TMDB (0–10) */
+  tmdbRating: number
+  /** Gêneros */
+  genres: string[]
+  status: WatchlistStatus
+  /** Data do date em que assistiram (ISO yyyy-MM-dd) */
+  watchedDate?: string
+  /** Avaliação de quem adicionou */
+  ownerReview?: WatchlistReview
+  /** Avaliação do parceiro/parceira */
+  partnerReview?: WatchlistReview
+  createdAt: number
+  updatedAt: number
+}

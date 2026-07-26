@@ -302,7 +302,7 @@ export default function NuncaFizGame() {
                   {isP1 && (
                     <input
                       className="input mt-2 text-sm"
-                      placeholder="Ex: assistir um filme esse fim de semana..."
+                      placeholder=""
                       value={gs.nextActivityChoice ?? ''}
                       onChange={e => saveLeaderChoice(e.target.value)}
                     />

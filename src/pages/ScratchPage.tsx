@@ -254,7 +254,7 @@ export default function ScratchPage() {
         )}
         {scratchedCount === 100 && (
           <p className="text-center text-xs font-semibold text-rose-500 mt-4 animate-bounce-in">
-            Todas reveladas! 🎉
+            Todas reveladas!
           </p>
         )}
       </div>
@@ -282,7 +282,7 @@ export default function ScratchPage() {
               <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
                 <Heart size={28} className="fill-white text-white" />
               </div>
-              <p className="text-xs font-bold text-rose-100 uppercase tracking-widest mb-2">Ideia revelada ✨</p>
+              <p className="text-xs font-bold text-rose-100 uppercase tracking-widest mb-2">Ideia revelada</p>
               <h2 className="text-2xl font-extrabold text-white leading-snug">{popup}</h2>
 
               {/* Badges de status */}

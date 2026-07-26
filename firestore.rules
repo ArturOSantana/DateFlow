@@ -40,12 +40,15 @@ service cloud.firestore {
                       || resource.data.requesterEmail == request.auth.token.email
                       || resource.data.recipientEmail == request.auth.token.email);
 
-      // Atualização: quem enviou OU quem recebeu (aceitar/recusar, preencher recipientId)
+      // Atualização: quem enviou OU quem recebeu — apenas campos permitidos
       allow update: if request.auth != null
                     && (request.auth.uid == resource.data.requesterId
                         || request.auth.uid == resource.data.recipientId
                         || resource.data.requesterEmail == request.auth.token.email
-                        || resource.data.recipientEmail == request.auth.token.email);
+                        || resource.data.recipientEmail == request.auth.token.email)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                                        .hasOnly(['status', 'recipientId', 'rejectionReason',
+                                                  'updatedAt', 'recipientPhoto', 'recipientName']);
 
       // Deleção: quem enviou OU quem recebeu (por UID ou e-mail)
       allow delete: if request.auth != null
@@ -69,9 +72,13 @@ service cloud.firestore {
       allow read: if request.auth != null
                   && request.auth.uid == resource.data.toUserId;
 
-      // Criação: feita pelo parceiro (withPartnerId) ao responder um date
-      // Qualquer usuário autenticado pode criar (a lógica de autorização está no cliente)
-      allow create: if request.auth != null;
+      // Criação: o remetente deve ser um usuário autenticado diferente do destinatário,
+      // e os campos obrigatórios devem estar presentes com valores corretos.
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['toUserId', 'type', 'fromName',
+                                                            'dateId', 'dateTitle', 'read', 'createdAt'])
+                    && request.resource.data.read == false
+                    && request.resource.data.toUserId != request.auth.uid;
 
       // Atualização (marcar como lida): só o destinatário
       allow update: if request.auth != null
@@ -86,23 +93,44 @@ service cloud.firestore {
       allow read, write: if request.auth != null
                          && request.auth.uid == userId;
 
-      // Parceiros com parceria aceita podem ler as preferências do dono
-      // (verificação feita no cliente via getPartnership; regra permissiva para leitura
-      //  pois o documento não tem referência ao parceiro, apenas ao dono)
-      allow read: if request.auth != null;
+      // Parceiros podem ler as preferências do dono se existir uma parceria aceita
+      // entre o leitor e o dono do documento (campo partnerUid populado na aceitação).
+      // Como o documento só tem o userId do dono, a leitura de parceiros é restrita
+      // a usuários autenticados cujo UID consta no campo 'partnerUid' do documento.
+      allow read: if request.auth != null
+                  && resource.data.partnerUid == request.auth.uid;
     }
 
     // ── fcmTokens ─────────────────────────────────────────────────────────────
     match /fcmTokens/{tokenId} {
-      // Cada usuário só lê, cria e deleta seus próprios tokens
+      // Cada usuário só lê, cria e deleta seus próprios tokens.
+      // O envio de push para outros usuários é feito exclusivamente via
+      // Cloud Function (sendPushNotification) que usa Admin SDK — sem leitura
+      // direta de tokens alheios no cliente.
       allow read, write: if request.auth != null
                          && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null
                     && request.auth.uid == request.resource.data.userId;
+    }
 
-      // Qualquer usuário autenticado pode LER tokens de outros usuários
-      // para poder enviar push para eles (ex.: parceiro enviando notificação)
-      allow read: if request.auth != null;
+    // ── watchlist ─────────────────────────────────────────────────────────────
+    match /watchlist/{itemId} {
+      // Qualquer membro do casal pode ler
+      allow read: if request.auth != null
+                  && request.auth.uid in resource.data.coupleIds;
+
+      // Criação: o criador deve estar na lista coupleIds
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.addedByUserId
+                    && request.auth.uid in request.resource.data.coupleIds;
+
+      // Atualização: qualquer membro do casal (para avaliações e status)
+      allow update: if request.auth != null
+                    && request.auth.uid in resource.data.coupleIds;
+
+      // Deleção: apenas quem adicionou
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.addedByUserId;
     }
 
     // ── brasaSessions ─────────────────────────────────────────────────────────
@@ -127,8 +155,10 @@ service cloud.firestore {
                     && (!('p2Uid' in resource.data) || resource.data.p2Uid == null || resource.data.p2Uid == '')
                     && request.resource.data.p2Uid == request.auth.uid;
 
-      // Leitura para encontrar sessão pelo código (join)
-      allow read: if request.auth != null;
+      // Leitura para encontrar sessão pelo código (join): só enquanto aguarda p2
+      allow read: if request.auth != null
+                  && resource.data.status == 'waiting'
+                  && (!('p2Uid' in resource.data) || resource.data.p2Uid == null || resource.data.p2Uid == '');
     }
   }
 }

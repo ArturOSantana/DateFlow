@@ -4,12 +4,13 @@ import {
   ArrowLeft, Edit2, Trash2, CheckCircle2, Circle, Share2, CalendarPlus,
   MapPin, Clock, Calendar, Copy, Check, Ban, RotateCcw, Heart, MessageCircle,
   DollarSign, Star, TrendingUp, TrendingDown, Plus, Navigation,
-  Eye, EyeOff, Trash, User, Lightbulb, X, ThumbsUp, ThumbsDown,
+  Eye, EyeOff, Trash, User, Lightbulb, X, ThumbsUp, ThumbsDown, Download, Mail,
 } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import * as dbApi from '../lib/db'
 import { formatDate, buildGoogleCalendarUrl, generateId } from '../lib/utils'
+import { downloadIcs } from '../lib/ics'
 import { getPronouns } from '../lib/gender'
 import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
@@ -78,6 +79,8 @@ export default function DateDetail() {
   const [copied, setCopied] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [mapsOpen, setMapsOpen] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   // Avaliação do dono
   const [hoverRating, setHoverRating] = useState(0)
@@ -193,7 +196,7 @@ export default function DateDetail() {
     const fromName = user.displayName ?? user.email ?? 'Parceiro(a)'
     const dateTitle = date.hiddenFromPartner ? 'Surpresa' : date.title
 
-    // Notificações para a parceira vinculada
+    // Notificações + e-mail para a parceira vinculada
     if (date.withPartnerId && date.withPartnerId !== user.uid) {
       if (status === 'cancelled') {
         await dbApi.createNotification({
@@ -203,6 +206,22 @@ export default function DateDetail() {
           dateTitle,
           fromName,
         })
+        // E-mail de cancelamento (sem .ics)
+        const partnerships = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
+        const p = partnerships.find(x =>
+          x.requesterId === date.withPartnerId || x.recipientId === date.withPartnerId
+        )
+        if (p) {
+          const isMe = p.requesterId === user.uid
+          const toEmail = isMe ? p.recipientEmail : p.requesterEmail
+          const toName  = isMe ? p.recipientName  : p.requesterName
+          if (toEmail) {
+            await dbApi.callSendEmailInvite({
+              dateId: date.id, toEmail, toName: toName || toEmail,
+              fromName, type: 'date_cancelled',
+            })
+          }
+        }
       } else if (status === 'confirmed') {
         await dbApi.createNotification({
           toUserId: date.withPartnerId,
@@ -213,6 +232,23 @@ export default function DateDetail() {
           dateValue: date.date,
           timeValue: date.time,
         })
+        // E-mail de confirmação com .ics atualizado
+        const partnerships = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
+        const p = partnerships.find(x =>
+          x.requesterId === date.withPartnerId || x.recipientId === date.withPartnerId
+        )
+        if (p) {
+          const isMe = p.requesterId === user.uid
+          const toEmail = isMe ? p.recipientEmail : p.requesterEmail
+          const toName  = isMe ? p.recipientName  : p.requesterName
+          if (toEmail) {
+            await dbApi.callSendEmailInvite({
+              dateId: date.id, toEmail, toName: toName || toEmail,
+              fromName, type: 'date_confirmed',
+              shareUrl: date.shareToken ? `${window.location.origin}/share/${date.shareToken}` : undefined,
+            })
+          }
+        }
       } else if (status === 'done') {
         await dbApi.createNotification({
           toUserId: date.withPartnerId,
@@ -242,6 +278,45 @@ export default function DateDetail() {
     await dbApi.deleteDate(date!.id)
     await refreshDates()
     navigate('/dates')
+  }
+
+  function handleDownloadIcs() {
+    if (!user) return
+    const d = date!
+    const organizer = { name: user.displayName ?? user.email ?? 'DateFlow', email: user.email ?? '' }
+    const shareUrl = d.shareToken ? `${window.location.origin}/share/${d.shareToken}` : undefined
+    downloadIcs(d, organizer, undefined, shareUrl)
+  }
+
+  async function handleSendEmail() {
+    const d = date!
+    if (!user || !d.withPartnerId || sendingEmail) return
+
+    // Busca os dados da parceria para obter o e-mail e nome da parceira
+    const partnerships = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
+    const partnership = partnerships.find(p =>
+      p.requesterId === d.withPartnerId || p.recipientId === d.withPartnerId
+    )
+    if (!partnership) return
+
+    const isMe = partnership.requesterId === user.uid
+    const toEmail = isMe ? partnership.recipientEmail : partnership.requesterEmail
+    const toName  = isMe ? partnership.recipientName  : partnership.requesterName
+
+    if (!toEmail) return
+
+    setSendingEmail(true)
+    await dbApi.callSendEmailInvite({
+      dateId:   d.id,
+      toEmail,
+      toName:   toName || toEmail,
+      fromName: user.displayName ?? user.email ?? 'DateFlow',
+      type:     d.status === 'confirmed' ? 'date_confirmed' : 'date_created',
+      shareUrl: d.shareToken ? `${window.location.origin}/share/${d.shareToken}` : undefined,
+    })
+    setSendingEmail(false)
+    setEmailSent(true)
+    setTimeout(() => setEmailSent(false), 3000)
   }
 
   const shareUrl = `${window.location.origin}/share/${date.shareToken}`
@@ -430,7 +505,7 @@ export default function DateDetail() {
           <div className="flex gap-2">
             <input
               className="input flex-1 text-sm"
-              placeholder="Ex: Traga algo leve para caminhar…"
+              placeholder="Nova dica…"
               value={newHint}
               onChange={e => setNewHint(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addHint())}
@@ -542,11 +617,10 @@ export default function DateDetail() {
           {/* Input de novo gasto — só disponível durante o date (confirmed), não após (done) */}
           {isConfirmed && (
             <div className="px-4 pb-4">
-              <p className="text-xs text-stone-400 mb-2">O que você gastou?</p>
               <div className="flex gap-2">
                 <input
                   className="input flex-1 text-sm"
-                  placeholder="Ex: Jantar, Uber…"
+                  placeholder="Descrição…"
                   value={expenseLabel}
                   onChange={e => setExpenseLabel(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), amountRef.current?.focus())}
@@ -631,7 +705,6 @@ export default function DateDetail() {
       {/* Avaliação — só aparece quando realizado */}
       {date.status === 'done' && (
         <div className="card p-4 mb-5 space-y-5">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Avaliações pós-date</p>
 
           {/* ── Avaliação do dono (só ele edita) ── */}
           {isOwner && (
@@ -689,7 +762,7 @@ export default function DateDetail() {
                     ) : (
                       <input
                         className="input text-sm"
-                        placeholder="Escreva aqui…"
+                        placeholder=""
                         value={quickAnswers[q.id] ?? ''}
                         onChange={e => setQuickAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                         onBlur={e => saveQuickAnswer(q, e.target.value)}
@@ -703,7 +776,7 @@ export default function DateDetail() {
               <textarea
                 className="textarea text-sm mb-2"
                 rows={3}
-                placeholder="Comentário livre sobre o date…"
+                placeholder=""
                 value={reviewText}
                 onChange={e => setReviewText(e.target.value)}
               />
@@ -783,6 +856,26 @@ export default function DateDetail() {
           <CalendarPlus size={14} />
           Google Agenda
         </a>
+        {/* Download .ics — para qualquer calendário (Apple, Outlook, etc.) */}
+        <button onClick={handleDownloadIcs} className="btn-secondary justify-center">
+          <Download size={14} />
+          Baixar .ics
+        </button>
+        {/* Enviar e-mail com convite para a parceira — só se tiver parceira vinculada */}
+        {isOwner && date.withPartnerId && (
+          <button
+            onClick={handleSendEmail}
+            disabled={sendingEmail}
+            className="btn-secondary justify-center"
+          >
+            {emailSent
+              ? <><Check size={14} className="text-emerald-600" /> Enviado!</>
+              : sendingEmail
+                ? <><Mail size={14} /> Enviando…</>
+                : <><Mail size={14} /> Enviar convite</>
+            }
+          </button>
+        )}
       </div>
 
       {/* Status transitions — só para o dono */}

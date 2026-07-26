@@ -109,15 +109,15 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
       case 'date_confirmed':
         return <><span className="font-medium">{n.fromName}</span><span className="text-emerald-700"> confirmou</span>{' o date '}<span className="font-medium">"{n.dateTitle}"</span></>
       case 'date_done':
-        return <><span className="font-medium">{n.fromName}</span>{' marcou '}<span className="font-medium">"{n.dateTitle}"</span>{' como realizado 🎉'}</>
+        return <><span className="font-medium">{n.fromName}</span>{' marcou '}<span className="font-medium">"{n.dateTitle}"</span>{' como realizado'}</>
       case 'invite_accepted':
-        return <><span className="font-medium">{n.fromName}</span><span className="text-rose-600"> aceitou</span>{' seu convite de parceria 💕'}</>
+        return <><span className="font-medium">{n.fromName}</span><span className="text-rose-600"> aceitou</span>{' seu convite de parceria'}</>
       case 'invite_rejected':
         return <><span className="font-medium">{n.fromName}</span>{' recusou seu convite de parceria'}</>
       case 'partner_note':
         return <><span className="font-medium">{n.fromName}</span>{' deixou uma observação em '}<span className="font-medium">"{n.dateTitle}"</span></>
       case 'partner_rated':
-        return <><span className="font-medium">{n.fromName}</span>{' avaliou '}<span className="font-medium">"{n.dateTitle}"</span>{n.rating ? ` com ${'⭐'.repeat(n.rating)}` : ''}</>
+        return <><span className="font-medium">{n.fromName}</span>{' avaliou '}<span className="font-medium">"{n.dateTitle}"</span>{n.rating ? ` — ${n.rating}/5` : ''}</>
     }
   }
 

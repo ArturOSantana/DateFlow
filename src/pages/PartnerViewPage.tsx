@@ -421,7 +421,7 @@ export default function PartnerViewPage() {
                 <textarea
                   className="textarea text-sm"
                   rows={3}
-                  placeholder="Ex: Não estou pronta para isso agora…"
+                  placeholder=""
                   value={rejectReason}
                   onChange={e => setRejectReason(e.target.value)}
                   autoFocus
@@ -854,7 +854,7 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
                       ) : (
                         <input
                           className="input text-sm"
-                          placeholder="Escreva aqui…"
+                          placeholder=""
                           value={partnerQuickAnswers[q.id] ?? ''}
                           onChange={e => setPartnerQuickAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                           onBlur={e => handlePartnerQuickAnswer(q, e.target.value)}
@@ -868,7 +868,7 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
                 <textarea
                   className="textarea text-sm mb-2"
                   rows={3}
-                  placeholder="Comentário sobre o date…"
+                  placeholder=""
                   value={partnerReviewText}
                   onChange={e => setPartnerReviewText(e.target.value)}
                 />
@@ -969,7 +969,7 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
                         <textarea
                           className="textarea text-sm"
                           rows={2}
-                          placeholder="Se quiser, conte o motivo para não ir…"
+                          placeholder=""
                           value={declineReason}
                           onChange={e => setDeclineReason(e.target.value)}
                           autoFocus
@@ -1007,7 +1007,7 @@ function DateCard({ date, expanded, onToggle, noteValue, onNoteChange, onSaveNot
             <textarea
               className="textarea text-sm mb-2"
               rows={3}
-              placeholder="Adicione um comentário ou sugestão sobre esse date…"
+              placeholder=""
               value={noteValue}
               onChange={e => onNoteChange(e.target.value)}
             />
@@ -1153,7 +1153,7 @@ function HiddenDateCard({
                     <textarea
                       className="textarea text-sm"
                       rows={2}
-                      placeholder="Se quiser, conte o motivo para não ir…"
+                      placeholder=""
                       value={declineReason}
                       onChange={e => setDeclineReason(e.target.value)}
                       autoFocus
