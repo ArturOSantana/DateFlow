@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEmailInvite = exports.sendPushNotification = void 0;
+exports.sendEmailNotification = exports.sendEmailInvite = exports.sendPushNotification = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -426,6 +426,167 @@ exports.sendEmailInvite = (0, https_1.onCall)({
                 contentType: 'text/calendar; method=REQUEST; charset=UTF-8',
             },
         ],
+    });
+    return { sent: true };
+});
+function buildNotificationEmailHtml(params) {
+    const { toName, fromName, type, dateTitle, dateFormatted, time, reason, rating, shareUrl } = params;
+    const SUBJECTS = {
+        date_accepted: `💚 ${fromName} aceitou o date "${dateTitle}"`,
+        date_declined: `❌ ${fromName} recusou o date "${dateTitle}"`,
+        date_cancelled: `🚫 Date "${dateTitle}" foi cancelado`,
+        date_changed: `📅 Data do date "${dateTitle}" foi atualizada`,
+        date_created: `🆕 ${fromName} planejou um novo date: "${dateTitle}"`,
+        date_confirmed: `✅ Date "${dateTitle}" confirmado!`,
+        date_done: `🎉 Date "${dateTitle}" realizado! Como foi?`,
+        invite_accepted: `🤝 ${fromName} aceitou seu convite de parceria`,
+        invite_rejected: `💔 ${fromName} recusou seu convite de parceria`,
+        partner_note: `📝 ${fromName} deixou uma observação no date "${dateTitle}"`,
+        partner_rated: `⭐ ${fromName} avaliou o date "${dateTitle}"`,
+    };
+    const HEADINGS = {
+        date_accepted: '💚 Date aceito!',
+        date_declined: '❌ Date recusado',
+        date_cancelled: '🚫 Date cancelado',
+        date_changed: '📅 Data atualizada',
+        date_created: '🆕 Novo date planejado!',
+        date_confirmed: '✅ Date confirmado!',
+        date_done: '🎉 Date realizado!',
+        invite_accepted: '🤝 Convite aceito!',
+        invite_rejected: '💔 Convite recusado',
+        partner_note: '📝 Nova observação',
+        partner_rated: '⭐ Avaliação recebida',
+    };
+    const INTROS = {
+        date_accepted: `${fromName} aceitou o date e está animado(a)! O date foi marcado como confirmado.`,
+        date_declined: reason
+            ? `${fromName} recusou o date "${dateTitle}". Motivo: ${reason}`
+            : `${fromName} recusou o date "${dateTitle}".`,
+        date_cancelled: reason
+            ? `${fromName} precisou cancelar o date "${dateTitle}". Motivo: ${reason}`
+            : `${fromName} cancelou o date "${dateTitle}".`,
+        date_changed: `${fromName} atualizou a data ou horário do date "${dateTitle}". Verifique os novos detalhes.`,
+        date_created: `${fromName} planejou um date especial para vocês. Confira os detalhes e adicione ao seu calendário!`,
+        date_confirmed: `Boa notícia! ${fromName} confirmou o date "${dateTitle}". Marque na agenda!`,
+        date_done: `${fromName} marcou o date "${dateTitle}" como realizado. Como foi para você? Entre no app para deixar sua avaliação!`,
+        invite_accepted: `${fromName} aceitou seu convite de parceria! Agora vocês podem planejar dates juntos(as).`,
+        invite_rejected: reason
+            ? `${fromName} recusou seu convite de parceria. Motivo: ${reason}`
+            : `${fromName} recusou seu convite de parceria.`,
+        partner_note: `${fromName} deixou uma observação no date "${dateTitle}". Confira no app!`,
+        partner_rated: rating
+            ? `${fromName} avaliou o date "${dateTitle}" com ${'⭐'.repeat(rating)} (${rating}/5).`
+            : `${fromName} avaliou o date "${dateTitle}". Confira no app!`,
+    };
+    const detailRows = [];
+    if (dateTitle && !['invite_accepted', 'invite_rejected'].includes(type)) {
+        detailRows.push(`<tr><td style="padding:8px 0;color:#57606a;font-size:13px;width:90px">Título</td><td style="padding:8px 0;font-size:14px;font-weight:600;color:#1f2328">${dateTitle}</td></tr>`);
+    }
+    if (dateFormatted) {
+        detailRows.push(`<tr><td style="padding:8px 0;color:#57606a;font-size:13px">Data</td><td style="padding:8px 0;font-size:14px;color:#1f2328">${dateFormatted}</td></tr>`);
+    }
+    if (time) {
+        detailRows.push(`<tr><td style="padding:8px 0;color:#57606a;font-size:13px">Horário</td><td style="padding:8px 0;font-size:14px;color:#1f2328">${time}</td></tr>`);
+    }
+    if (rating) {
+        detailRows.push(`<tr><td style="padding:8px 0;color:#57606a;font-size:13px">Avaliação</td><td style="padding:8px 0;font-size:14px;color:#1f2328">${'⭐'.repeat(rating)} (${rating}/5)</td></tr>`);
+    }
+    const ctaButton = shareUrl && dateTitle
+        ? `<a href="${shareUrl}" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#1f2328;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600">Ver date no app →</a>`
+        : '';
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f7f8fa;font-family:-apple-system,'Segoe UI',system-ui,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f8fa;padding:32px 16px">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden">
+      <tr><td style="background:#1f2328;padding:24px 32px">
+        <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.5px">DateFlow</span>
+      </td></tr>
+      <tr><td style="padding:32px">
+        <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#1f2328">${HEADINGS[type]}</h1>
+        <p style="margin:0 0 24px;font-size:15px;color:#57606a;line-height:1.6">
+          Olá, <strong>${toName}</strong>! ${INTROS[type]}
+        </p>
+        ${detailRows.length > 0 ? `
+        <table style="width:100%;border-collapse:collapse;background:#f7f8fa;border-radius:8px;padding:8px 16px;border:1px solid #e5e7eb">
+          <tr><td colspan="2" style="padding:12px 0 0">
+            <table style="width:100%;padding:0 12px">${detailRows.join('')}</table>
+          </td></tr>
+          <tr><td style="height:12px"></td></tr>
+        </table>` : ''}
+        ${ctaButton}
+        <p style="margin:32px 0 0;font-size:12px;color:#57606a;border-top:1px solid #e5e7eb;padding-top:16px">
+          Este e-mail foi enviado pelo <strong>DateFlow</strong> porque você tem uma parceria ativa.<br>
+          ${shareUrl ? `<a href="${shareUrl}" style="color:#3b82d4">Abrir no DateFlow</a>` : ''}
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+    return { subject: SUBJECTS[type], html };
+}
+exports.sendEmailNotification = (0, https_1.onCall)({
+    region: 'southamerica-east1',
+    secrets: [SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM],
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Autenticação necessária.');
+    }
+    const data = request.data;
+    if (!data.toUserId || !data.type || !data.fromName) {
+        throw new https_1.HttpsError('invalid-argument', 'Campos obrigatórios ausentes.');
+    }
+    if (!(data.type in LABELS)) {
+        throw new https_1.HttpsError('invalid-argument', 'Tipo de notificação inválido.');
+    }
+    // Busca o e-mail do destinatário via Firebase Auth Admin
+    let toEmail;
+    let toName;
+    try {
+        const userRecord = await admin.auth().getUser(data.toUserId);
+        if (!userRecord.email)
+            return { sent: false, reason: 'no_email' };
+        toEmail = userRecord.email;
+        toName = data.toName || userRecord.displayName || userRecord.email;
+    }
+    catch {
+        return { sent: false, reason: 'user_not_found' };
+    }
+    // Formata a data se fornecida
+    const dateFormatted = data.dateValue ? fmtDate(data.dateValue) : undefined;
+    // Monta o HTML do e-mail
+    const { subject, html } = buildNotificationEmailHtml({
+        toName,
+        fromName: data.fromName,
+        type: data.type,
+        dateTitle: data.dateTitle,
+        dateFormatted,
+        time: data.timeValue,
+        reason: data.reason,
+        rating: data.rating,
+        shareUrl: data.shareUrl,
+    });
+    // Cria o transporter com TLS
+    const smtpPort = Number(SMTP_PORT.value());
+    const transporter = nodemailer.createTransport({
+        host: SMTP_HOST.value(),
+        port: smtpPort,
+        secure: smtpPort === 465,
+        requireTLS: smtpPort === 587,
+        auth: {
+            user: SMTP_USER.value(),
+            pass: SMTP_PASS.value(),
+        },
+    });
+    await transporter.sendMail({
+        from: SMTP_FROM.value(),
+        to: `"${toName}" <${toEmail}>`,
+        subject,
+        html,
     });
     return { sent: true };
 });

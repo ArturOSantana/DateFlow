@@ -12,47 +12,62 @@ import {
   requestPushPermission,
   listenIncomingNotifications,
 } from '../lib/pushNotifications'
+import {
+  clearNativeNotificationSession,
+  initializeNativeNotifications,
+  isNativeAndroid,
+  showNativeLocalNotification,
+} from '../lib/nativeNotifications'
 
 export function usePushNotifications(userId: string | null) {
   const unsubRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     if (!userId) {
-      // Limpa ao deslogar
       unsubRef.current?.()
       unsubRef.current = null
-      // Avisa o service worker para parar de monitorar
+      void clearNativeNotificationSession()
       navigator.serviceWorker?.ready.then(reg => {
         reg.active?.postMessage({ type: 'CLEAR_USER' })
       }).catch(() => {})
       return
     }
 
+    const currentUserId = userId
     let cancelled = false
 
     async function setup() {
-      // Solicita permissão e registra o SW (passa userId para o SW)
-      await requestPushPermission(userId!)
+      if (isNativeAndroid()) {
+        await initializeNativeNotifications(currentUserId)
+      } else {
+        await requestPushPermission(currentUserId)
+      }
       if (cancelled) return
 
-      // Listener em foreground: quando o app está aberto, exibe toast nativo
-      unsubRef.current = listenIncomingNotifications(userId!, (title, body, url) => {
-        if (document.visibilityState === 'visible') {
-          // App em foco: exibe via Notifications API nativa (banner do sistema)
-          if (Notification.permission === 'granted') {
-            const notif = new Notification(title, {
-              body,
-              icon: '/favicon.svg',
-              badge: '/favicon.svg',
-              tag: 'dateflow-foreground',
-            })
-            notif.onclick = () => {
-              window.focus()
-              window.location.pathname = url
-            }
+      unsubRef.current = listenIncomingNotifications(currentUserId, (title, body, url) => {
+        if (isNativeAndroid()) {
+          // No Android nativo, sempre dispara a notificação local
+          // independente do estado de visibilidade da WebView
+          void showNativeLocalNotification(title, body)
+          return
+        }
+
+        // No browser/PWA, só exibe foreground se o app estiver visível
+        // (em background o service worker trata via onSnapshot)
+        if (document.visibilityState !== 'visible') return
+
+        if (Notification.permission === 'granted') {
+          const notif = new Notification(title, {
+            body,
+            icon: '/favicon.svg',
+            badge: '/favicon.svg',
+            tag: 'dateflow-foreground',
+          })
+          notif.onclick = () => {
+            window.focus()
+            window.location.pathname = url
           }
         }
-        // Se app minimizado/fechado: o service worker já cuida via onSnapshot
       })
     }
 

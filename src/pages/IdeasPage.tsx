@@ -92,41 +92,41 @@ export default function IdeasPage() {
       </div>
 
       {/* Ações especiais */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-3 gap-2.5 mb-5">
         <button
           onClick={() => navigate('/ideas/draw')}
-          className="card p-3.5 flex items-center gap-3 hover:border-stone-300 hover:shadow-sm transition-all text-left"
+          className="card p-3 flex flex-col items-center gap-2 hover:border-stone-300 hover:shadow-sm transition-all text-center"
         >
-          <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-            <Shuffle size={16} className="text-amber-600" />
+          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+            <Shuffle size={18} className="text-amber-600" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-stone-900 leading-snug">Sortear</p>
-            <p className="text-xs text-stone-400 leading-snug">Ideia aleatória</p>
+          <div>
+            <p className="text-xs font-semibold text-stone-900 leading-snug">Sortear</p>
+            <p className="text-[10px] text-stone-400 leading-snug">Aleatório</p>
           </div>
         </button>
         <button
           onClick={() => navigate('/ideas/scratch')}
-          className="card p-3.5 flex items-center gap-3 hover:border-stone-300 hover:shadow-sm transition-all text-left"
+          className="card p-3 flex flex-col items-center gap-2 hover:border-stone-300 hover:shadow-sm transition-all text-center"
         >
-          <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
-            <Ticket size={16} className="text-rose-500" />
+          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+            <Ticket size={18} className="text-rose-500" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-stone-900 leading-snug">Raspadinha</p>
-            <p className="text-xs text-stone-400 leading-snug">100 ideias</p>
+          <div>
+            <p className="text-xs font-semibold text-stone-900 leading-snug">Raspadinha</p>
+            <p className="text-[10px] text-stone-400 leading-snug">100 ideias</p>
           </div>
         </button>
         <button
           onClick={() => navigate('/ideas/games')}
-          className="card p-3.5 flex items-center gap-3 hover:border-violet-200 hover:shadow-sm transition-all text-left border-violet-100 bg-violet-50/30"
+          className="card p-3 flex flex-col items-center gap-2 hover:border-violet-200 hover:shadow-sm transition-all text-center border-violet-100 bg-violet-50/30"
         >
-          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-            <Gamepad2 size={16} className="text-violet-600" />
+          <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+            <Gamepad2 size={18} className="text-violet-600" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-stone-900 leading-snug">Jogos</p>
-            <p className="text-xs text-stone-400 leading-snug">9 jogos a dois</p>
+          <div>
+            <p className="text-xs font-semibold text-stone-900 leading-snug">Jogos</p>
+            <p className="text-[10px] text-stone-400 leading-snug">9 a dois</p>
           </div>
         </button>
       </div>

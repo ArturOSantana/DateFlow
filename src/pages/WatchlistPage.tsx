@@ -18,11 +18,10 @@ import * as dbApi from '../lib/db'
 import type { WatchlistItem, WatchlistMediaType, WatchlistReview } from '../types'
 import Modal from '../components/Modal'
 import EmptyState from '../components/EmptyState'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 
 // ─── TMDB helpers ─────────────────────────────────────────────────────────────
 
-const TMDB_KEY  = import.meta.env.VITE_TMDB_API_KEY as string | undefined
-const TMDB_BASE = 'https://api.themoviedb.org/3'
 const POSTER_SM = 'https://image.tmdb.org/t/p/w185'
 const POSTER_LG = 'https://image.tmdb.org/t/p/w500'
 
@@ -51,12 +50,16 @@ const TMDB_GENRES: Record<number, string> = {
 }
 
 async function searchTmdb(q: string): Promise<TmdbResult[]> {
-  if (!TMDB_KEY) return []
-  const url = `${TMDB_BASE}/search/multi?api_key=${TMDB_KEY}&language=pt-BR&query=${encodeURIComponent(q)}&include_adult=false`
-  const res = await fetch(url)
-  if (!res.ok) return []
-  const data = await res.json()
-  return (data.results as TmdbResult[]).filter(r => r.media_type === 'movie' || r.media_type === 'tv')
+  try {
+    const fn = httpsCallable<{ q: string }, { results: TmdbResult[] }>(
+      getFunctions(undefined, 'southamerica-east1'),
+      'tmdbSearch',
+    )
+    const res = await fn({ q })
+    return (res.data.results ?? []).filter(r => r.media_type === 'movie' || r.media_type === 'tv')
+  } catch {
+    return []
+  }
 }
 
 function releaseYear(r: TmdbResult) {
@@ -322,7 +325,6 @@ export default function WatchlistPage() {
 
   const toWatchCount = items.filter(i => i.status === 'to_watch').length
   const watchedCount = items.filter(i => i.status === 'watched').length
-  const noTmdbKey    = !TMDB_KEY
 
   const activeFilters =
     (filterStatus !== 'all' ? 1 : 0) + (filterMedia !== 'all' ? 1 : 0)
@@ -431,18 +433,6 @@ export default function WatchlistPage() {
         </div>
       </div>
 
-      {/* ── Aviso sem chave TMDB ── */}
-      {noTmdbKey && (
-        <div className="mb-5 p-3.5 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-800 leading-relaxed">
-          <strong>Chave TMDB não configurada.</strong>{' '}
-          Adicione <code className="font-mono bg-amber-100 px-1 rounded">VITE_TMDB_API_KEY</code> no{' '}
-          <code className="font-mono bg-amber-100 px-1 rounded">.env.local</code> para habilitar a busca.
-          Chave grátis em{' '}
-          <a href="https://developer.themoviedb.org/docs/getting-started" target="_blank" rel="noreferrer" className="underline font-semibold">
-            themoviedb.org
-          </a>.
-        </div>
-      )}
 
       {/* ── Lista ── */}
       {loading ? (
@@ -484,12 +474,7 @@ export default function WatchlistPage() {
         onClose={() => { setSearchOpen(false); setSearchQuery(''); setSearchResults([]) }}
         title="Buscar filme ou série"
       >
-        {noTmdbKey ? (
-          <p className="text-sm text-stone-500 py-2">
-            Configure <code className="font-mono bg-stone-100 px-1 rounded text-xs">VITE_TMDB_API_KEY</code> para usar a busca.
-          </p>
-        ) : (
-          <div className="space-y-3">
+        <div className="space-y-3">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
               <input
@@ -530,8 +515,7 @@ export default function WatchlistPage() {
                 Digite o nome para buscar
               </p>
             )}
-          </div>
-        )}
+        </div>
       </Modal>
 
       {/* ════ Modal: avaliação ════ */}

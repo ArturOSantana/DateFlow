@@ -1,6 +1,6 @@
 
-import { Heart } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import logoHorizontal from '../assets/dateflow-horizontal.png'
 
 export default function LoginPage() {
   const { signInWithGoogle, loading } = useAuth()
@@ -16,10 +16,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-ember-600 rounded-3xl mb-5 shadow-lg shadow-ember-600/30">
-            <Heart size={26} className="text-white fill-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">DateFlow</h1>
+          <img src={logoHorizontal} alt="DateFlow" className="h-14 mx-auto mb-3" />
           <p className="text-sm text-stone-500 mt-1.5">Planeje os encontros que importam.</p>
         </div>
 

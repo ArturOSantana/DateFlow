@@ -10,11 +10,11 @@ import {
   Users,
   User,
   LogOut,
-  Heart,
   Menu,
   X,
   Popcorn,
 } from 'lucide-react'
+import logoIcon from '../assets/dateflow-horizontal.png'
 import { useAuth } from '../contexts/AuthContext'
 import { useApp } from '../contexts/AppContext'
 import { getPronouns } from '../lib/gender'
@@ -108,10 +108,7 @@ export default function Sidebar() {
         {/* Logo */}
         <div className="px-4 py-5 border-b border-stone-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-ember-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm shadow-ember-600/30">
-              <Heart size={14} className="text-white fill-white" />
-            </div>
-            <span className="font-bold text-stone-900 tracking-tight flex-1">DateFlow</span>
+            <img src={logoIcon} alt="DateFlow" className="h-6 flex-1 object-left object-contain" />
             <NotificationBell />
           </div>
         </div>
@@ -127,10 +124,7 @@ export default function Sidebar() {
         >
           <Menu size={20} className="text-stone-700" />
         </button>
-        <div className="w-6 h-6 bg-ember-600 rounded-lg flex items-center justify-center shrink-0">
-          <Heart size={12} className="text-white fill-white" />
-        </div>
-        <span className="font-bold text-stone-900 text-sm tracking-tight flex-1">DateFlow</span>
+        <img src={logoIcon} alt="DateFlow" className="h-5 flex-1 object-left object-contain" />
         <NotificationBell />
       </header>
 
@@ -157,10 +151,7 @@ export default function Sidebar() {
         {/* Cabeçalho do drawer */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-stone-200 shrink-0 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 bg-ember-600 rounded-lg flex items-center justify-center shrink-0">
-              <Heart size={12} className="text-white fill-white" />
-            </div>
-            <span className="font-bold text-stone-900 text-sm tracking-tight">DateFlow</span>
+            <img src={logoIcon} alt="DateFlow" className="h-5 object-contain" />
           </div>
           <button
             onClick={close}

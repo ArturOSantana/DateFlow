@@ -28,7 +28,10 @@ export default function Modal({ open, onClose, title, children, width = 'max-w-l
             <X size={15} />
           </button>
         </div>
-        <div className="px-5 py-4 overflow-y-auto max-h-[80vh]">
+        <div
+          className="px-5 py-4 overflow-y-auto max-h-[80vh]"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
+        >
           {children}
         </div>
       </div>

@@ -1,32 +1,70 @@
-# React + TypeScript + Vite
+# DateFlow
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Aplicativo web em React + Vite com build Android via Capacitor, notificações locais/push e distribuição pelo Firebase App Distribution.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js e npm
+- Android Studio para gerar o APK
+- Firebase CLI (`firebase-tools` já está no projeto)
+- `google-services.json` do app Android em [`android/app/google-services.json`](android/app/google-services.json)
+- Variável de ambiente `GOOGLE_APPLICATION_CREDENTIALS` apontando para a credencial de service account do Firebase App Distribution
+- Variável de ambiente `FIREBASE_APP_DISTRIBUTION_GROUPS` com os grupos de testers
 
-## React Compiler
+## Web
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Android
+
+Sincronizar o web build com o projeto Android:
+
+```bash
+npm run android:sync
+```
+
+Abrir no Android Studio:
+
+```bash
+npm run android:open
+```
+
+Gerar APK release pelo Gradle:
+
+```bash
+./android/gradlew -p android assembleRelease
+```
+
+## Firebase App Distribution
+
+Depois de configurar [`android/app/google-services.json`](android/app/google-services.json), `GOOGLE_APPLICATION_CREDENTIALS` e `FIREBASE_APP_DISTRIBUTION_GROUPS`, envie a release:
+
+```bash
+npm run android:firebase:appdistribution
+```
+
+## Notificações Android
+
+O projeto agora usa:
+
+- [`@capacitor/push-notifications`](package.json) para registrar token FCM no Android
+- [`@capacitor/local-notifications`](package.json) para exibir notificações locais quando o app estiver em foreground
+- Firestore para persistir tokens em `fcmTokens`
+
+No Android, as permissões de notificação já foram adicionadas em [`AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml).
+
+## Configurações Firebase necessárias
+
+Além das variáveis web já existentes em [`.env.example`](.env.example), configure também:
+
+- App Android no Firebase com package `com.dateflow.app`
+- Cloud Messaging habilitado
+- `google-services.json` baixado do console Firebase
+- SHA-1/SHA-256 do keystore cadastrados para autenticação Google no Android
+
+## Observação sobre login Google
+
+O fluxo atual de login continua usando popup web com Firebase Auth. Para login Google nativo no Android via SDK do Google, será necessário adicionar um plugin nativo compatível com Capacitor 8 e configurar OAuth no app Android.

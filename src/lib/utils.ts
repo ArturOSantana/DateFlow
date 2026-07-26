@@ -40,11 +40,15 @@ export function isDatePast(isoDate: string, time: string): boolean {
 }
 
 export function generateId(): string {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+  const bytes = new Uint8Array(6)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
 }
 
 export function generateShareToken(): string {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
 }
 
 export function buildGoogleCalendarUrl(

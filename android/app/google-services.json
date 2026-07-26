@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "212176904554",
+    "project_id": "dateflow-88e0c",
+    "storage_bucket": "dateflow-88e0c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212176904554:android:caa43f188b0b4568368513",
+        "android_client_info": {
+          "package_name": "com.dateflow.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "212176904554-ggu66piqf99bnoehkaf9o0kdavh5st7n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dateflow.app",
+            "certificate_hash": "c2254633e1edd14715314cf6e08aeb46639ba163"
+          }
+        },
+        {
+          "client_id": "212176904554-lc1rogdkvg6ivrtaf0lr691lh0eggeen.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDleOLkE2Lwg7x9dMx_8vz8NuEKGrGczFk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "212176904554-lc1rogdkvg6ivrtaf0lr691lh0eggeen.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -213,6 +213,7 @@ export default function PartnerViewPage() {
     // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: pendingPartnership.requesterId,
+      toName:   pendingPartnership.requesterName || pendingPartnership.requesterEmail,
       type: 'invite_accepted',
       dateId: '',
       dateTitle: '',
@@ -242,6 +243,7 @@ export default function PartnerViewPage() {
     // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: pendingPartnership.requesterId,
+      toName:   pendingPartnership.requesterName || pendingPartnership.requesterEmail,
       type: 'invite_rejected',
       dateId: '',
       dateTitle: '',
@@ -269,6 +271,7 @@ export default function PartnerViewPage() {
 
     const notifData: Parameters<typeof dbApi.createNotification>[0] = {
       toUserId: targetDate.userId,
+      toName:   ownerName || undefined,
       type: decision === 'accepted' ? 'date_accepted' : 'date_declined',
       dateId,
       dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,
@@ -294,6 +297,7 @@ export default function PartnerViewPage() {
     if (targetDate) {
       await dbApi.createNotification({
         toUserId: targetDate.userId,
+        toName:   ownerName || undefined,
         type: 'partner_note',
         dateId,
         dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,
@@ -313,6 +317,7 @@ export default function PartnerViewPage() {
     if (targetDate) {
       await dbApi.createNotification({
         toUserId: targetDate.userId,
+        toName:   ownerName || undefined,
         type: 'partner_rated',
         dateId,
         dateTitle: targetDate.hiddenFromPartner ? 'Surpresa' : targetDate.title,

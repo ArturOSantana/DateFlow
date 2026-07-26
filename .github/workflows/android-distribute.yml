@@ -1,0 +1,83 @@
+name: Android — Firebase App Distribution
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  distribute:
+    name: Build & Upload APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Java 21
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # 3. Node 22
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # 4. Dependências npm
+      - name: Install dependencies
+        run: npm ci
+
+      # 5. Build web (Vite)
+      - name: Build web
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+
+      # 6. Sync Capacitor → Android
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      # 7. Restaurar keystore de release (base64 → arquivo)
+      - name: Restore keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/dateflow-release.jks
+
+      # 8. Permissão de execução no gradlew
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      # 9. Incrementar versionCode automaticamente com o número do run
+      - name: Set versionCode
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+
+      # 10. Upload para Firebase App Distribution
+      - name: Upload to Firebase App Distribution
+        run: ./android/gradlew -p android appDistributionUploadRelease
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_TESTERS: ${{ secrets.FIREBASE_TESTERS }}
+          FIREBASE_APP_DISTRIBUTION_GROUPS: ${{ secrets.FIREBASE_APP_DISTRIBUTION_GROUPS }}
+          KEYSTORE_PATH: dateflow-release.jks
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASS }}
+
+      # 11. Salvar APK como artefato (opcional — fica disponível no Actions por 7 dias)
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dateflow-release-${{ github.run_number }}.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7

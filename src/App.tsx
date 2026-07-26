@@ -1,7 +1,11 @@
 
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { usePushNotifications } from './hooks/usePushNotifications'
+import { hasCompletedOnboarding, saveOnboardingData } from './lib/db'
+import OnboardingFlow from './components/OnboardingFlow'
+import type { PartnerGender, PreferenceCategory } from './types'
 
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
@@ -36,6 +40,23 @@ function ProtectedLayout() {
   // Registra token FCM e solicita permissão de push ao usuário logado
   usePushNotifications(user?.uid ?? null)
 
+  const [onboardingChecked, setOnboardingChecked] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    hasCompletedOnboarding(user.uid).then(done => {
+      setShowOnboarding(!done)
+      setOnboardingChecked(true)
+    })
+  }, [user?.uid])
+
+  async function handleOnboardingComplete(data: { gender: PartnerGender; prefs: PreferenceCategory }) {
+    if (!user) return
+    await saveOnboardingData(user.uid, data.gender, data.prefs)
+    setShowOnboarding(false)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -46,19 +67,35 @@ function ProtectedLayout() {
 
   if (!user) return <Navigate to="/login" replace />
 
+  if (!onboardingChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-stone-200 border-t-stone-900 rounded-full animate-spin" />
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex bg-stone-50">
+    <div className="h-screen flex bg-stone-50 overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:block w-56 shrink-0" />
       <Sidebar />
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pb-safe-nav md:pb-0 mt-12 md:mt-0 overflow-y-auto">
+      <main className="flex-1 min-w-0 pb-safe-nav md:pb-0 mt-12 md:mt-0 overflow-y-auto h-full">
         <Outlet />
       </main>
 
       {/* Mobile bottom nav */}
       <BottomNav />
+
+      {/* Onboarding para novos usuários */}
+      {showOnboarding && (
+        <OnboardingFlow
+          userName={user.displayName ?? 'você'}
+          onComplete={handleOnboardingComplete}
+        />
+      )}
     </div>
   )
 }

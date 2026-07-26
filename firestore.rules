@@ -5,13 +5,13 @@ service cloud.firestore {
 
     // ── dates ────────────────────────────────────────────────────────────────
     match /dates/{dateId} {
-      // Dono: lê e escreve tudo
-      allow read, write: if request.auth != null
-                         && request.auth.uid == resource.data.userId;
-
       // Criação: só o próprio usuário pode criar com seu userId
       allow create: if request.auth != null
                     && request.auth.uid == request.resource.data.userId;
+
+      // Dono: lê, atualiza e deleta tudo
+      allow read, update, delete: if request.auth != null
+                                  && request.auth.uid == resource.data.userId;
 
       // Pessoa vinculada: leitura se withPartnerId == seu UID
       allow read: if request.auth != null
@@ -149,13 +149,17 @@ service cloud.firestore {
                     && (request.auth.uid == resource.data.p1Uid
                         || request.auth.uid == resource.data.p2Uid);
 
-      // Entrada (join): p2 ainda não está no doc, então permite update quando p2Uid está vazio
+      // Entrada (join): p2 ainda não está no doc; somente os campos de entrada são alteráveis
       allow update: if request.auth != null
                     && resource.data.status == 'waiting'
                     && (!('p2Uid' in resource.data) || resource.data.p2Uid == null || resource.data.p2Uid == '')
-                    && request.resource.data.p2Uid == request.auth.uid;
+                    && request.resource.data.p2Uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                                        .hasOnly(['p2Uid', 'p2Name', 'status', 'updatedAt']);
 
       // Leitura para encontrar sessão pelo código (join): só enquanto aguarda p2
+      // NOTA: qualquer usuário autenticado pode ler sessões abertas neste estado.
+      // Não armazene dados sensíveis em brasaSessions enquanto status='waiting'.
       allow read: if request.auth != null
                   && resource.data.status == 'waiting'
                   && (!('p2Uid' in resource.data) || resource.data.p2Uid == null || resource.data.p2Uid == '');

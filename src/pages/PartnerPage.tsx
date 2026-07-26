@@ -273,6 +273,7 @@ export default function PartnerPage() {
     // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: p.requesterId,
+      toName:   p.requesterName || p.requesterEmail,
       type: 'invite_accepted',
       dateId: '',
       dateTitle: '',
@@ -291,6 +292,7 @@ export default function PartnerPage() {
     // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: p.requesterId,
+      toName:   p.requesterName || p.requesterEmail,
       type: 'invite_rejected',
       dateId: '',
       dateTitle: '',
@@ -341,7 +343,7 @@ export default function PartnerPage() {
             <p className="text-xs text-stone-400 mb-1.5">
               E-mail da pessoa para dar acesso aos seus dates.
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-col xs:flex-row gap-2">
               <input
                 type="email"
                 className="input flex-1 text-sm"
@@ -353,7 +355,7 @@ export default function PartnerPage() {
               <button
                 onClick={sendInvite}
                 disabled={sending}
-                className="btn-primary shrink-0"
+                className="btn-primary xs:shrink-0 justify-center"
               >
                 <UserPlus size={14} />
                 {sending ? 'Enviando…' : 'Dar acesso'}

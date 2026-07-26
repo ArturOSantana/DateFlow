@@ -41,7 +41,10 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 flex items-center z-20 md:hidden safe-pb">
+    <nav
+      className="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 flex items-center z-20 md:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       {items.map(({ to, icon: Icon, label, badge }) => (
         <NavLink
           key={to}

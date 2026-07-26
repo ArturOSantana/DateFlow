@@ -46,6 +46,34 @@ export async function callSendEmailInvite(payload: SendEmailInvitePayload): Prom
   }
 }
 
+export interface SendEmailNotificationPayload {
+  toUserId: string
+  toName: string
+  type: NotificationType
+  fromName: string
+  dateTitle: string
+  dateId: string
+  reason?: string
+  dateValue?: string
+  timeValue?: string
+  rating?: number
+  shareUrl?: string
+}
+
+/**
+ * Chama a Cloud Function `sendEmailNotification` para enviar e-mail de notificação.
+ * Funciona para todos os NotificationType. Falha silenciosamente.
+ */
+export async function callSendEmailNotification(payload: SendEmailNotificationPayload): Promise<void> {
+  try {
+    const functions = getFunctions(undefined, 'southamerica-east1')
+    const fn = httpsCallable(functions, 'sendEmailNotification')
+    await fn(payload)
+  } catch {
+    // Falha no e-mail não bloqueia o fluxo principal
+  }
+}
+
 // ─── Dates ───────────────────────────────────────────────────────────────────
 
 export async function getDates(userId: string): Promise<DateEvent[]> {
@@ -299,6 +327,35 @@ export async function saveUserGender(userId: string, ownerGender: import('../typ
   await setDoc(ref, { userId, ownerGender, updatedAt: Date.now() }, { merge: true })
 }
 
+// ─── Onboarding ───────────────────────────────────────────────────────────────
+
+/**
+ * Verifica se o usuário já concluiu o onboarding.
+ * O onboarding é considerado feito quando onboardingDoneAt existe no documento.
+ */
+export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
+  const ref = doc(db, 'userPreferences', userId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return false
+  return Boolean(snap.data()?.onboardingDoneAt)
+}
+
+/**
+ * Marca o onboarding como concluído e salva gênero + preferências do usuário.
+ */
+export async function saveOnboardingData(
+  userId: string,
+  ownerGender: import('../types').PartnerGender,
+  preferences: PreferenceCategory,
+): Promise<void> {
+  const ref = doc(db, 'userPreferences', userId)
+  await setDoc(
+    ref,
+    { userId, ownerGender, preferences, onboardingDoneAt: Date.now(), updatedAt: Date.now() },
+    { merge: true },
+  )
+}
+
 /**
  * Retorna os dates planejados POR outros usuários onde withPartnerId === viewerUid.
  * Usado para mostrar ao usuário os dates que alguém planejou para ele/ela.
@@ -315,8 +372,16 @@ export async function getIncomingDates(viewerUid: string): Promise<DateEvent[]> 
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 
+// Tipos que já recebem e-mail separado via callSendEmailInvite (com .ics)
+// Para esses, não disparamos o sendEmailNotification aqui para evitar duplicatas.
+const EMAIL_INVITE_TYPES: NotificationType[] = [
+  'date_created', 'date_confirmed', 'date_changed', 'date_cancelled',
+]
+
 export async function createNotification(data: {
   toUserId: string
+  /** Nome do destinatário (usado para personalizar o e-mail; opcional) */
+  toName?: string
   type: NotificationType
   dateId: string
   dateTitle: string
@@ -325,19 +390,41 @@ export async function createNotification(data: {
   dateValue?: string
   timeValue?: string
   rating?: number
+  /** URL pública do date (para CTA no e-mail; opcional) */
+  shareUrl?: string
 }): Promise<void> {
-  // Salva a notificação in-app no Firestore
+  const { toName, shareUrl, ...notifData } = data
+
+  // Salva a notificação in-app no Firestore (não persiste toName/shareUrl)
   await addDoc(collection(db, 'notifications'), {
-    ...data,
+    ...notifData,
     read: false,
     createdAt: Date.now(),
   })
 
   // Envia push notification real para o dispositivo do destinatário
   try {
-    await sendPushToUser(data)
+    await sendPushToUser(notifData)
   } catch {
     // Falha no push não deve bloquear o fluxo principal
+  }
+
+  // Envia e-mail de notificação para tipos sem fluxo de convite separado
+  // (date_created/confirmed/changed/cancelled já têm callSendEmailInvite com .ics)
+  if (!EMAIL_INVITE_TYPES.includes(data.type)) {
+    callSendEmailNotification({
+      toUserId:  data.toUserId,
+      toName:    toName ?? '',
+      type:      data.type,
+      fromName:  data.fromName,
+      dateTitle: data.dateTitle,
+      dateId:    data.dateId,
+      reason:    data.reason,
+      dateValue: data.dateValue,
+      timeValue: data.timeValue,
+      rating:    data.rating,
+      shareUrl,
+    })
   }
 }
 

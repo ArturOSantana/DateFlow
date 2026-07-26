@@ -252,6 +252,7 @@ export default function DateDetail() {
       } else if (status === 'done') {
         await dbApi.createNotification({
           toUserId: date.withPartnerId,
+          toName:   withPartnerName || undefined,
           type: 'date_done',
           dateId: date.id,
           dateTitle,
@@ -904,15 +905,23 @@ export default function DateDetail() {
             </button>
           </>
         )}
-        {date.status === 'waiting_reply' && date.partnerDecision !== 'declined' && (
+        {date.status === 'waiting_reply' && !date.partnerDecision && (
+          /* Aguardando resposta da parceira — dono não pode confirmar, só ela pode */
+          <button onClick={() => setStatus('waiting_courage')} className="btn-ghost flex-1 justify-center">
+            <RotateCcw size={13} />
+            Voltar
+          </button>
+        )}
+        {date.status === 'waiting_reply' && date.partnerDecision === 'accepted' && (
+          /* Ela aceitou — dono pode confirmar formalmente ou cancelar */
           <>
-            <button onClick={() => setStatus('waiting_courage')} className="btn-ghost flex-1 justify-center">
-              <RotateCcw size={13} />
-              Voltar
+            <button onClick={() => setStatus('cancelled')} className="btn-ghost flex-1 justify-center text-stone-500">
+              <Ban size={13} />
+              Cancelar date
             </button>
             <button onClick={() => setStatus('confirmed')} className="btn-secondary flex-1 justify-center text-emerald-700">
               <Heart size={13} />
-              Confirmado!
+              Confirmar!
             </button>
           </>
         )}

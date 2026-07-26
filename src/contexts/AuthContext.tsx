@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged,
-  signInWithPopup,
   signOut,
   type User,
 } from 'firebase/auth'
-import { auth, googleProvider } from '../lib/firebase'
+import { auth } from '../lib/firebase'
+import { signInWithGoogle as signInWithGoogleMobile } from '../lib/mobileAuth'
 
 interface AuthContextType {
   user: User | null
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function signInWithGoogle() {
-    await signInWithPopup(auth, googleProvider)
+    await signInWithGoogleMobile(auth)
   }
 
   async function logout() {
