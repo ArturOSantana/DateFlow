@@ -83,6 +83,7 @@ jobs:
         run: ./android/gradlew -p android appDistributionUploadRelease
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
           FIREBASE_APP_DISTRIBUTION_GROUPS: ${{ secrets.FIREBASE_APP_DISTRIBUTION_GROUPS }}
           KEYSTORE_PATH: ${{ github.workspace }}/android/app/dateflow-release.jks
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}

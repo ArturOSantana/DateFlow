@@ -33,6 +33,7 @@ android {
             signingConfig signingConfigs.release
             firebaseAppDistribution {
                 artifactType = 'APK'
+                appId = System.getenv('FIREBASE_ANDROID_APP_ID') ?: ''
                 releaseNotes = "DateFlow v${defaultConfig.versionName} (${defaultConfig.versionCode}) — ${new Date().format('dd/MM/yyyy HH:mm')}"
                 // Nome do grupo criado no console do Firebase App Distribution.
                 // Todos os e-mails cadastrados nesse grupo receberão o APK automaticamente.
