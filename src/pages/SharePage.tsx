@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Calendar, Clock, MapPin, CheckCircle2, Circle, Heart, CalendarPlus, Star } from 'lucide-react'
-import { getDateByShareToken, getPartnership } from '../lib/db'
+import { Calendar, Clock, MapPin, CheckCircle2, Circle, Heart, CalendarPlus, Star, ThumbsUp, ThumbsDown, X } from 'lucide-react'
+import { getDateByShareToken, getPartnership, respondToDateInvite } from '../lib/db'
 import { formatDate, buildGoogleCalendarUrl } from '../lib/utils'
 import type { DateEvent } from '../types'
 import StatusBadge from '../components/StatusBadge'
@@ -15,6 +15,13 @@ export default function SharePage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
+  // Estado da resposta
+  const [decision, setDecision] = useState<'accepted' | 'declined' | null>(null)
+  const [showDeclineForm, setShowDeclineForm] = useState(false)
+  const [declineReason, setDeclineReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
   useEffect(() => {
     if (!token || authLoading) return
 
@@ -25,7 +32,7 @@ export default function SharePage() {
         return
       }
 
-      // Se a usuária está logada e é parceira do dono, redireciona para visão completa
+      // Se o usuário logado é a parceira/parceiro vinculado, redireciona para visão completa
       if (user && user.uid !== d.userId) {
         const partnership = await getPartnership(user.uid, d.userId)
         if (partnership && partnership.status === 'accepted') {
@@ -35,9 +42,58 @@ export default function SharePage() {
       }
 
       setDate(d)
+      // Se já existe uma decisão, mostra o estado final
+      if (d.partnerDecision) {
+        setDecision(d.partnerDecision)
+        setSubmitted(true)
+      }
       setLoading(false)
     })
   }, [token, user, authLoading, navigate])
+
+  async function handleAccept() {
+    if (!date || !user || submitting) return
+    // Só a pessoa vinculada pode responder
+    if (date.withPartnerId && user.uid !== date.withPartnerId) return
+    setSubmitting(true)
+    try {
+      await respondToDateInvite(date.id, 'accepted')
+      setDecision('accepted')
+      setSubmitted(true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDecline() {
+    if (!date || !user || submitting) return
+    if (date.withPartnerId && user.uid !== date.withPartnerId) return
+    setSubmitting(true)
+    try {
+      await respondToDateInvite(date.id, 'declined', declineReason || undefined)
+      setDecision('declined')
+      setShowDeclineForm(false)
+      setSubmitted(true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Verifica se o usuário logado pode responder ao convite
+  const canRespond =
+    !!user &&
+    !!date &&
+    user.uid !== date.userId &&
+    !!date.withPartnerId &&
+    user.uid === date.withPartnerId &&
+    !submitted
+
+  // Usuário não logado que recebeu o link via WhatsApp: mostra CTA para entrar
+  const notLoggedAndCanTryToRespond =
+    !user &&
+    !authLoading &&
+    !!date &&
+    !!date.withPartnerId
 
   if (authLoading || loading) {
     return (
@@ -94,7 +150,7 @@ export default function SharePage() {
               <Clock size={14} className="text-stone-400 shrink-0" />
               {date.time}
             </div>
-            {date.location && (
+            {date.location && !date.hiddenFromPartner && (
               <div className="flex items-center gap-2.5 text-sm">
                 <MapPin size={14} className="text-stone-400 shrink-0" />
                 <a
@@ -109,13 +165,25 @@ export default function SharePage() {
             )}
           </div>
 
-          {date.description && (
+          {date.description && !date.hiddenFromPartner && (
             <p className="text-sm text-stone-600 bg-stone-50 rounded-xl p-3 mb-4 whitespace-pre-wrap border border-stone-100">
               {date.description}
             </p>
           )}
 
-          {totalTasks > 0 && (
+          {/* Dicas — só aparecem quando o date está oculto */}
+          {date.hiddenFromPartner && (date.partnerHints ?? []).length > 0 && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-4">
+              <p className="text-xs font-medium text-amber-700 mb-2">Dicas do date 💡</p>
+              <ul className="space-y-1">
+                {(date.partnerHints ?? []).map((hint, i) => (
+                  <li key={i} className="text-sm text-stone-700">• {hint}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {totalTasks > 0 && !date.hiddenFromPartner && (
             <div className="border-t border-stone-100 pt-4 mb-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Checklist</p>
@@ -169,6 +237,99 @@ export default function SharePage() {
                   "{date.review}"
                 </p>
               )}
+            </div>
+          )}
+
+          {/* ── Resposta ao convite ── */}
+
+          {/* Estado final: já respondeu */}
+          {submitted && decision === 'accepted' && (
+            <div className="border-t border-stone-100 pt-4 mb-4">
+              <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 rounded-xl px-4 py-3">
+                <ThumbsUp size={16} className="shrink-0" />
+                <span className="text-sm font-medium">Você aceitou o date! 🎉</span>
+              </div>
+            </div>
+          )}
+
+          {submitted && decision === 'declined' && (
+            <div className="border-t border-stone-100 pt-4 mb-4">
+              <div className="flex items-center gap-2 text-stone-500 bg-stone-50 rounded-xl px-4 py-3">
+                <ThumbsDown size={16} className="shrink-0" />
+                <span className="text-sm font-medium">Você recusou o date.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Botões de aceitar/recusar para a parceira/parceiro vinculado */}
+          {canRespond && !showDeclineForm && (
+            <div className="border-t border-stone-100 pt-4 mb-4">
+              <p className="text-xs text-stone-500 mb-3 text-center">
+                Você foi convidado(a) para este date. O que acha?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleAccept}
+                  disabled={submitting}
+                  className="btn-primary justify-center py-2.5"
+                >
+                  <ThumbsUp size={14} />
+                  Aceitar
+                </button>
+                <button
+                  onClick={() => setShowDeclineForm(true)}
+                  disabled={submitting}
+                  className="btn-ghost justify-center py-2.5 text-stone-600"
+                >
+                  <ThumbsDown size={14} />
+                  Recusar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Formulário de recusa */}
+          {canRespond && showDeclineForm && (
+            <div className="border-t border-stone-100 pt-4 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-stone-700">Recusar date</p>
+                <button
+                  onClick={() => setShowDeclineForm(false)}
+                  className="text-stone-400 hover:text-stone-600 p-1"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <textarea
+                className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-stone-700 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-300 resize-none mb-3"
+                rows={3}
+                placeholder="Quer deixar um motivo? (opcional)"
+                value={declineReason}
+                onChange={e => setDeclineReason(e.target.value)}
+              />
+              <button
+                onClick={handleDecline}
+                disabled={submitting}
+                className="btn-ghost w-full justify-center text-stone-600"
+              >
+                {submitting ? 'Enviando…' : 'Confirmar recusa'}
+              </button>
+            </div>
+          )}
+
+          {/* CTA para usuários não logados que receberam o link */}
+          {notLoggedAndCanTryToRespond && (
+            <div className="border-t border-stone-100 pt-4 mb-4">
+              <p className="text-xs text-stone-500 mb-3 text-center">
+                Entre no app para aceitar ou recusar este date.
+              </p>
+              <button
+                onClick={() => navigate(`/login?redirect=/share/${token}`)}
+                className="btn-primary w-full justify-center"
+              >
+                <Heart size={14} />
+                Entrar no DateFlow
+              </button>
             </div>
           )}
 

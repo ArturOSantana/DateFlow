@@ -5,6 +5,7 @@ import {
   MapPin, Clock, Calendar, Copy, Check, Ban, RotateCcw, Heart, MessageCircle,
   DollarSign, Star, TrendingUp, TrendingDown, Plus, Navigation,
   Eye, EyeOff, Trash, User, Lightbulb, X, ThumbsUp, ThumbsDown, Download, Mail,
+  MessageSquare,
 } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -975,6 +976,28 @@ export default function DateDetail() {
         {copied && (
           <p className="text-xs text-emerald-600 mb-3">Link copiado!</p>
         )}
+
+        {/* Botão WhatsApp */}
+        <a
+          href={(() => {
+            const lines: string[] = []
+            lines.push(`💌 *${date.title}*`)
+            lines.push('')
+            lines.push(`📅 ${formatDate(date.date)} às ${date.time}`)
+            if (date.location) lines.push(`📍 ${date.location}`)
+            if (!date.hiddenFromPartner && date.description) lines.push(`\n${date.description}`)
+            lines.push('')
+            lines.push(`Confirme ou recuse pelo link:`)
+            lines.push(shareUrl)
+            return `https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`
+          })()}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary w-full justify-center mb-4 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+        >
+          <MessageSquare size={14} />
+          Compartilhar no WhatsApp
+        </a>
 
         {/* Privacidade dos gastos */}
         <div

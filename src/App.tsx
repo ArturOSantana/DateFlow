@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet, useSearchParams } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { usePushNotifications } from './hooks/usePushNotifications'
 import { hasCompletedOnboarding, saveOnboardingData } from './lib/db'
@@ -142,7 +142,11 @@ export default function App() {
 
 function LoginRedirect() {
   const { user, loading } = useAuth()
+  const [searchParams] = useSearchParams()
   if (loading) return null
-  if (user) return <Navigate to="/" replace />
+  if (user) {
+    const redirect = searchParams.get('redirect')
+    return <Navigate to={redirect ?? '/'} replace />
+  }
   return <LoginPage />
 }

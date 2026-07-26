@@ -33,19 +33,21 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEmailNotification = exports.sendEmailInvite = exports.sendPushNotification = void 0;
+exports.tmdbSearch = exports.sendEmailNotification = exports.sendEmailInvite = exports.sendPushNotification = void 0;
 const admin = __importStar(require("firebase-admin"));
+const https = __importStar(require("https"));
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const nodemailer = __importStar(require("nodemailer"));
 admin.initializeApp();
 const db = admin.firestore();
-// ─── Secrets (definidos via: firebase functions:secrets:set SMTP_USER) ────────
+// ─── Secrets (definidos via: firebase functions:secrets:set …) ───────────────
 const SMTP_HOST = (0, params_1.defineSecret)('SMTP_HOST');
 const SMTP_PORT = (0, params_1.defineSecret)('SMTP_PORT');
 const SMTP_USER = (0, params_1.defineSecret)('SMTP_USER');
 const SMTP_PASS = (0, params_1.defineSecret)('SMTP_PASS');
 const SMTP_FROM = (0, params_1.defineSecret)('SMTP_FROM'); // ex: "DateFlow <noreply@seudominio.com>"
+const TMDB_SECRET = (0, params_1.defineSecret)('TMDB_API_KEY');
 // ─── Labels para push ─────────────────────────────────────────────────────────
 const LABELS = {
     date_accepted: {
@@ -261,6 +263,26 @@ exports.sendPushNotification = (0, https_1.onCall)({ region: 'southamerica-east1
         const isPartner = dateData.withPartnerId === request.auth.uid;
         if (!isOwner && !isPartner) {
             throw new https_1.HttpsError('permission-denied', 'Sem acesso a este date.');
+        }
+    }
+    // Para notificações de parceria (invite_accepted / invite_rejected), verifica
+    // que existe uma partnership envolvendo o chamador e o destinatário.
+    const partnershipTypes = ['invite_accepted', 'invite_rejected'];
+    if (partnershipTypes.includes(data.type)) {
+        const snap1 = await db.collection('partnerships')
+            .where('requesterId', '==', request.auth.uid)
+            .where('recipientId', '==', data.toUserId)
+            .limit(1)
+            .get();
+        const snap2 = snap1.empty
+            ? await db.collection('partnerships')
+                .where('requesterId', '==', data.toUserId)
+                .where('recipientId', '==', request.auth.uid)
+                .limit(1)
+                .get()
+            : snap1;
+        if (snap1.empty && snap2.empty) {
+            throw new https_1.HttpsError('permission-denied', 'Sem parceria com este usuário.');
         }
     }
     // Busca todos os FCM tokens do destinatário
@@ -589,5 +611,42 @@ exports.sendEmailNotification = (0, https_1.onCall)({
         html,
     });
     return { sent: true };
+});
+// ─── Cloud Function: tmdbSearch (proxy seguro — chave nunca vai ao cliente) ───
+/**
+ * Proxy para a API TMDB. O cliente chama esta função autenticado;
+ * a chave TMDB fica apenas no secret e nunca é enviada ao browser.
+ *
+ * Secret necessário:
+ *   firebase functions:secrets:set TMDB_API_KEY
+ */
+exports.tmdbSearch = (0, https_1.onCall)({
+    region: 'southamerica-east1',
+    secrets: [TMDB_SECRET],
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Autenticação necessária.');
+    }
+    const { q } = request.data;
+    if (!q || typeof q !== 'string' || q.trim().length === 0) {
+        throw new https_1.HttpsError('invalid-argument', 'Parâmetro "q" é obrigatório.');
+    }
+    if (q.length > 200) {
+        throw new https_1.HttpsError('invalid-argument', 'Consulta muito longa.');
+    }
+    const apiKey = TMDB_SECRET.value();
+    const encoded = encodeURIComponent(q.trim());
+    const path = `/3/search/multi?api_key=${apiKey}&language=pt-BR&query=${encoded}&include_adult=false`;
+    const results = await new Promise((resolve, reject) => {
+        const req = https.get({ host: 'api.themoviedb.org', path, headers: { Accept: 'application/json' } }, (res) => {
+            const chunks = [];
+            res.on('data', (c) => chunks.push(c));
+            res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        });
+        req.on('error', reject);
+        req.end();
+    });
+    const parsed = JSON.parse(results);
+    return { results: parsed.results ?? [] };
 });
 //# sourceMappingURL=index.js.map

@@ -115,6 +115,24 @@ export async function getDateByShareToken(token: string): Promise<DateEvent | nu
   return { id: d.id, ...d.data() } as DateEvent
 }
 
+/**
+ * Permite que a parceira/parceiro vinculado(a) aceite ou recuse o date
+ * diretamente pelo link de compartilhamento, sem precisar de parceria formal.
+ * Requer que o usuário esteja autenticado e seja o withPartnerId do date.
+ */
+export async function respondToDateInvite(
+  dateId: string,
+  decision: 'accepted' | 'declined',
+  reason?: string,
+): Promise<void> {
+  const data: Partial<DateEvent> = {
+    partnerDecision: decision,
+    updatedAt: Date.now(),
+  }
+  if (reason) data.partnerDecisionReason = reason
+  await updateDoc(doc(db, 'dates', dateId), data)
+}
+
 // ─── Ideas ───────────────────────────────────────────────────────────────────
 
 export async function getIdeas(userId: string): Promise<Idea[]> {

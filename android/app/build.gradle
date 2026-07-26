@@ -34,7 +34,8 @@ android {
             firebaseAppDistribution {
                 artifactType = 'APK'
                 releaseNotes = "DateFlow v${defaultConfig.versionName} (${defaultConfig.versionCode}) — ${new Date().format('dd/MM/yyyy HH:mm')}"
-                testers = System.getenv('FIREBASE_TESTERS') ?: ''
+                // Nome do grupo criado no console do Firebase App Distribution.
+                // Todos os e-mails cadastrados nesse grupo receberão o APK automaticamente.
                 groups = System.getenv('FIREBASE_APP_DISTRIBUTION_GROUPS') ?: ''
             }
         }
