@@ -1,25 +1,21 @@
 /**
  * pushNotifications.ts
  *
- * Push notifications sem backend — 100% plano Spark (gratuito) do Firebase.
+ * Push notifications com dois mecanismos de entrega:
  *
- * Como funciona:
- * 1. O usuário concede permissão de notificação no browser
- * 2. O service worker (firebase-messaging-sw.js) abre uma conexão onSnapshot
- *    com o Firestore monitorando as notificações não lidas do usuário
- * 3. Quando outra pessoa cria uma notificação no Firestore, o onSnapshot
- *    dispara no service worker e exibe a notificação nativa do sistema
+ * 1. Firestore onSnapshot (service worker / React hook)
+ *    - Funciona no plano Spark (gratuito)
+ *    - App aberto  → notificação em < 1s via onSnapshot no React
+ *    - App minimizado / fechado → service worker detecta e mostra a notificação
  *
- * Resultado:
- * - App aberto       → notificação em < 1s via onSnapshot no React
- * - App minimizado   → service worker detecta e mostra a notificação
- * - App fechado      → service worker detecta e mostra a notificação
- *   (o service worker permanece ativo em background pelo browser)
- *
- * Sem server key, sem Cloud Functions, sem plano pago.
+ * 2. FCM v1 API via Cloud Function `sendPushNotification` (plano Blaze)
+ *    - Entrega garantida mesmo quando o service worker está inativo
+ *    - Chamado automaticamente por sendPushToUser() quando o usuário tem
+ *      FCM tokens registrados no Firestore
  */
 
 import { getToken, onMessage, type Messaging } from 'firebase/messaging'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 import {
   doc,
   setDoc,
@@ -144,18 +140,17 @@ export async function removeFcmToken(userId: string, token: string): Promise<voi
   await deleteDoc(doc(db, 'fcmTokens', id))
 }
 
-// ─── sendPushToUser — sem backend, usa onSnapshot no SW ─────────────────────
+// ─── sendPushToUser — FCM v1 via Cloud Function ──────────────────────────────
 
 /**
- * No plano Spark (gratuito) não há como enviar push "de fora" sem um servidor.
- * O mecanismo de entrega é o Firestore onSnapshot no service worker:
- * - createNotification() já salva o documento no Firestore
- * - O service worker do destinatário recebe o onSnapshot e dispara a notif
+ * Envia push via Cloud Function `sendPushNotification` (FCM v1 API).
+ * Requer plano Blaze do Firebase e que o destinatário tenha ao menos um
+ * FCM token registrado em `fcmTokens/`.
  *
- * Esta função é mantida para compatibilidade com db.ts mas é um no-op
- * porque a entrega já está garantida pelo onSnapshot do SW.
+ * Falha silenciosamente: se a Cloud Function não estiver disponível (plano
+ * Spark ou sem tokens), a entrega continua garantida pelo onSnapshot do SW.
  */
-export async function sendPushToUser(_params: {
+export async function sendPushToUser(params: {
   toUserId: string
   type: NotificationType
   fromName: string
@@ -166,8 +161,13 @@ export async function sendPushToUser(_params: {
   timeValue?: string
   rating?: number
 }): Promise<void> {
-  // No-op: a notificação já foi salva em createNotification().
-  // O service worker do destinatário detecta via onSnapshot e exibe a push.
+  try {
+    const fns = getFunctions(undefined, 'southamerica-east1')
+    const fn = httpsCallable(fns, 'sendPushNotification')
+    await fn(params)
+  } catch {
+    // Falha silenciosa — entrega via onSnapshot do SW continua ativa
+  }
 }
 
 // ─── Listener em tempo real (app aberto) ─────────────────────────────────────

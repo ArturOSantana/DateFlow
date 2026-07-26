@@ -4,9 +4,43 @@
 // abrir um onSnapshot nas notificações não lidas do usuário logado.
 // Quando um documento novo chega, o SW exibe a notificação nativa do sistema
 // — mesmo com o app fechado ou minimizado.
+//
+// Os scripts do Firebase são pré-cacheados no evento `install` para garantir
+// funcionamento mesmo quando a CDN da Google estiver temporariamente indisponível.
 
-importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js')
-importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js')
+const FIREBASE_CDN_VERSION = '11.10.0'
+const FIREBASE_SCRIPTS = [
+  `https://www.gstatic.com/firebasejs/${FIREBASE_CDN_VERSION}/firebase-app-compat.js`,
+  `https://www.gstatic.com/firebasejs/${FIREBASE_CDN_VERSION}/firebase-firestore-compat.js`,
+]
+const SW_CACHE = `dateflow-sw-firebase-${FIREBASE_CDN_VERSION}`
+
+// Pré-cacheia os scripts do Firebase no install para resistir a falhas de CDN
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(SW_CACHE).then(cache =>
+      Promise.all(
+        FIREBASE_SCRIPTS.map(url =>
+          cache.match(url).then(cached =>
+            cached ? Promise.resolve() : cache.add(new Request(url, { cache: 'no-cache' }))
+          )
+        )
+      )
+    ).catch(() => {}) // não bloqueia install se CDN estiver offline no primeiro boot
+  )
+  self.skipWaiting()
+})
+
+// Serve os scripts do Firebase a partir do cache quando disponível
+self.addEventListener('fetch', event => {
+  if (!FIREBASE_SCRIPTS.includes(event.request.url)) return
+  event.respondWith(
+    caches.match(event.request).then(cached => cached ?? fetch(event.request))
+  )
+})
+
+importScripts(FIREBASE_SCRIPTS[0])
+importScripts(FIREBASE_SCRIPTS[1])
 
 let db = null
 let currentUserId = null

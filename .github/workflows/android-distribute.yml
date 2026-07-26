@@ -66,7 +66,7 @@ jobs:
       - name: Assemble release APK
         run: ./android/gradlew -p android assembleRelease
         env:
-          KEYSTORE_PATH: dateflow-release.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/android/app/dateflow-release.jks
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASS }}
@@ -78,7 +78,7 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_TESTERS: ${{ secrets.FIREBASE_TESTERS }}
           FIREBASE_APP_DISTRIBUTION_GROUPS: ${{ secrets.FIREBASE_APP_DISTRIBUTION_GROUPS }}
-          KEYSTORE_PATH: dateflow-release.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/android/app/dateflow-release.jks
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASS }}
