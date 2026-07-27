@@ -212,7 +212,7 @@ describe('updateWatchlistItem', () => {
     await updateWatchlistItem('item1', { status: 'watched' })
 
     expect(firestoreModule.updateDoc).toHaveBeenCalledOnce()
-    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as Record<string, unknown>
+    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>
     expect(callArg.status).toBe('watched')
     expect(callArg).toHaveProperty('updatedAt')
   })
@@ -253,7 +253,7 @@ describe('setWatchlistReview', () => {
     await setWatchlistReview('item1', 'ownerReview', review)
 
     expect(firestoreModule.updateDoc).toHaveBeenCalledOnce()
-    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as Record<string, unknown>
+    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>
     expect(callArg.ownerReview).toEqual(review)
     expect(callArg).toHaveProperty('updatedAt')
   })
@@ -266,7 +266,7 @@ describe('setWatchlistReview', () => {
     const { setWatchlistReview } = await import('@/lib/db')
     await setWatchlistReview('item2', 'partnerReview', review)
 
-    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as Record<string, unknown>
+    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>
     expect(callArg.partnerReview).toEqual(review)
   })
 
@@ -278,7 +278,7 @@ describe('setWatchlistReview', () => {
     const { setWatchlistReview } = await import('@/lib/db')
     await setWatchlistReview('item3', 'ownerReview', review)
 
-    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as Record<string, unknown>
+    const callArg = vi.mocked(firestoreModule.updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>
     expect(callArg).not.toHaveProperty('partnerReview')
     expect(callArg).toHaveProperty('ownerReview')
   })

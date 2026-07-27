@@ -5,7 +5,7 @@
  * ao componente, extraímos a lógica aqui para testar diretamente.
  */
 import { describe, it, expect } from 'vitest'
-import type { WatchlistItem } from '../../types'
+import type { WatchlistItem } from '../types'
 
 // ─── Funções extraídas para teste ─────────────────────────────────────────────
 
