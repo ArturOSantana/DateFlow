@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import logoHorizontal from '../assets/dateflow-horizontal.png'
 
 export default function LoginPage() {
-  const { signInWithGoogle, loading } = useAuth()
+  const { signInWithGoogle, loading, authError } = useAuth()
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
@@ -25,6 +25,12 @@ export default function LoginPage() {
           <p className="text-xs text-stone-500 text-center mb-5">
             Entre com sua conta Google para começar
           </p>
+
+          {authError && (
+            <p className="text-xs text-red-600 text-center mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {authError}
+            </p>
+          )}
 
           <button
             onClick={signInWithGoogle}
