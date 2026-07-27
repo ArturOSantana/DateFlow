@@ -67,9 +67,9 @@ export default function Dashboard() {
   const nextIsMine = nextDate ? nextDate.userId === user?.uid : true
 
   return (
-    <div className="p-5 md:p-7 max-w-2xl">
+    <div className="p-5 md:p-7 max-w-2xl animate-page-enter">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 animate-slide-up-sm">
         <h1 className="text-xl font-bold text-stone-900">
           Olá, {firstName} 👋
         </h1>
@@ -80,22 +80,22 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="card p-4">
+        <div className="card p-4 animate-stat-pop stagger-1">
           <p className="text-2xl font-semibold text-stone-900">{confirmedCount}</p>
           <p className="text-xs text-stone-500 mt-0.5">Confirmados</p>
         </div>
-        <div className="card p-4">
+        <div className="card p-4 animate-stat-pop stagger-2">
           <p className="text-2xl font-semibold text-stone-900">{totalDone}</p>
           <p className="text-xs text-stone-500 mt-0.5">Realizados</p>
         </div>
-        <div className="card p-4">
+        <div className="card p-4 animate-stat-pop stagger-3">
           <p className="text-2xl font-semibold text-stone-900">{pendingTasks}</p>
           <p className="text-xs text-stone-500 mt-0.5">Tarefas</p>
         </div>
       </div>
 
       {/* Next date */}
-      <div className="mb-6">
+      <div className="mb-6 animate-slide-up stagger-4">
         <h2 className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-3">
           Próximo encontro
         </h2>
@@ -106,7 +106,7 @@ export default function Dashboard() {
                 ? navigate(`/dates/${nextDate.id}`)
                 : navigate(`/partner/view/${nextDate.userId}`)
             }
-            className="card w-full text-left p-4 hover:border-stone-300 transition-colors"
+            className="card w-full text-left p-4 hover:border-stone-300 hover:shadow-md hover:shadow-stone-900/[.06] transition-all duration-200 active:scale-[.99]"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -158,7 +158,7 @@ export default function Dashboard() {
 
       {/* Recent */}
       {recent.length > 0 && (
-        <div>
+        <div className="animate-slide-up stagger-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-medium text-stone-500 uppercase tracking-wide">
               Recentes
@@ -171,7 +171,7 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="space-y-2">
-            {recent.map(d => {
+            {recent.map((d, idx) => {
               const isMine = d.userId === user?.uid
               return (
                 <button
@@ -181,7 +181,8 @@ export default function Dashboard() {
                       ? navigate(`/dates/${d.id}`)
                       : navigate(`/partner/view/${d.userId}`)
                   }
-                  className="card w-full text-left px-4 py-3 hover:border-stone-300 transition-colors flex items-center justify-between gap-3"
+                  className="card w-full text-left px-4 py-3 hover:border-stone-300 hover:shadow-sm hover:shadow-stone-900/[.05] transition-all duration-200 active:scale-[.99] flex items-center justify-between gap-3 animate-slide-up"
+                  style={{ animationDelay: `${0.28 + idx * 0.05}s` }}
                 >
                   <div className="min-w-0 flex-1">
                     {!isMine && (

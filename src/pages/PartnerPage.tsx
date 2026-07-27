@@ -142,6 +142,37 @@ function PrefsModal({
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
+// ─── Partículas de corações para o aceite ────────────────────────────────────
+
+function HeartParticles({ id }: { id: string }) {
+  const particles = [
+    { x: -18, delay: 0,    rot: '-15deg', size: 14 },
+    { x:   0, delay: 0.07, rot:   '5deg', size: 18 },
+    { x:  20, delay: 0.04, rot:  '20deg', size: 12 },
+    { x: -8,  delay: 0.12, rot: '-30deg', size: 10 },
+    { x:  12, delay: 0.09, rot:  '10deg', size: 16 },
+  ]
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-visible" aria-hidden="true">
+      {particles.map((p, i) => (
+        <span
+          key={`${id}-${i}`}
+          className="animate-heart-fly absolute text-rose-500"
+          style={{
+            left: `calc(50% + ${p.x}px)`,
+            bottom: '40%',
+            fontSize: p.size,
+            animationDelay: `${p.delay}s`,
+            ['--rot' as string]: p.rot,
+          }}
+        >
+          ♥
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export default function PartnerPage() {
   const { user } = useAuth()
   const [partnerships, setPartnerships] = useState<Partnership[]>([])
@@ -162,6 +193,10 @@ export default function PartnerPage() {
   // Vinculação em massa
   const [linking, setLinking] = useState<string | null>(null)
   const [linkedMsg, setLinkedMsg] = useState<string | null>(null)
+
+  // Animações de aceitar/recusar
+  const [acceptingId, setAcceptingId] = useState<string | null>(null)
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
 
   function copyInviteLink() {
     const link = `${window.location.origin}/partner/view/${user!.uid}`
@@ -262,15 +297,16 @@ export default function PartnerPage() {
 
   async function acceptInvite(p: Partnership) {
     if (!user) return
+    setAcceptingId(p.id)
+    // Aguarda animação terminar antes de commitar no Firebase
+    await new Promise(r => setTimeout(r, 520))
     await dbApi.updatePartnership(p.id, {
       status: 'accepted',
       recipientId: user.uid,
       recipientName: user.displayName ?? 'Usuário',
       recipientPhoto: user.photoURL ?? null,
     })
-    // Vincula preferências para leitura mútua via Firestore rules
     await dbApi.linkPartnerPreferences(user.uid, p.requesterId)
-    // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: p.requesterId,
       toName:   p.requesterName || p.requesterEmail,
@@ -279,17 +315,18 @@ export default function PartnerPage() {
       dateTitle: '',
       fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
     })
+    setAcceptingId(null)
     await load()
   }
 
   async function rejectInvite(p: Partnership) {
     if (!user) return
+    setRejectingId(p.id)
+    await new Promise(r => setTimeout(r, 580))
     await dbApi.updatePartnership(p.id, { status: 'rejected' })
-    // Remove o vínculo de preferências se havia sido criado
     if (p.recipientId) {
       await dbApi.unlinkPartnerPreferences(user.uid, p.requesterId).catch(() => {})
     }
-    // Notifica quem enviou o convite
     await dbApi.createNotification({
       toUserId: p.requesterId,
       toName:   p.requesterName || p.requesterEmail,
@@ -298,6 +335,7 @@ export default function PartnerPage() {
       dateTitle: '',
       fromName: user.displayName ?? user.email ?? 'Parceiro(a)',
     })
+    setRejectingId(null)
     await load()
   }
 
@@ -394,36 +432,50 @@ export default function PartnerPage() {
         <div className="mb-5">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">Solicitações recebidas</p>
           <div className="space-y-2">
-            {pendingReceived.map(p => (
-              <div key={p.id} className="card p-4 flex items-center gap-3">
-                {p.requesterPhoto
-                  ? <img src={p.requesterPhoto} alt="" className="w-10 h-10 rounded-full shrink-0" />
-                  : <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0"><User size={18} className="text-stone-500" /></div>
-                }
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-stone-900 truncate">{p.requesterName || p.requesterEmail}</p>
-                  <p className="text-xs text-stone-500 truncate">{p.requesterEmail}</p>
+            {pendingReceived.map(p => {
+              const isAccepting = acceptingId === p.id
+              const isRejecting = rejectingId === p.id
+              return (
+                <div
+                  key={p.id}
+                  className={[
+                    'card p-4 flex items-center gap-3 relative overflow-visible',
+                    isAccepting ? 'animate-card-accept' : '',
+                    isRejecting ? 'animate-card-reject' : '',
+                  ].join(' ')}
+                >
+                  {isAccepting && <HeartParticles id={p.id} />}
+                  {p.requesterPhoto
+                    ? <img src={p.requesterPhoto} alt="" className="w-10 h-10 rounded-full shrink-0" />
+                    : <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0"><User size={18} className="text-stone-500" /></div>
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-stone-900 truncate">{p.requesterName || p.requesterEmail}</p>
+                    <p className="text-xs text-stone-500 truncate">{p.requesterEmail}</p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <button
+                      onClick={() => acceptInvite(p)}
+                      disabled={isAccepting || isRejecting}
+                      className="btn-secondary text-xs px-2 py-1 text-emerald-700 border-emerald-200 disabled:opacity-50"
+                      title="Aceitar"
+                    >
+                      <Check size={13} />
+                      Aceitar
+                    </button>
+                    <button
+                      onClick={() => rejectInvite(p)}
+                      disabled={isAccepting || isRejecting}
+                      className="btn-ghost text-xs px-2 py-1 text-red-500 disabled:opacity-50"
+                      title="Recusar"
+                    >
+                      <UserX size={13} />
+                      Recusar
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    onClick={() => acceptInvite(p)}
-                    className="btn-secondary text-xs px-2 py-1 text-emerald-700 border-emerald-200"
-                    title="Aceitar"
-                  >
-                    <Check size={13} />
-                    Aceitar
-                  </button>
-                  <button
-                    onClick={() => rejectInvite(p)}
-                    className="btn-ghost text-xs px-2 py-1 text-red-500"
-                    title="Recusar"
-                  >
-                    <UserX size={13} />
-                    Recusar
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

@@ -789,13 +789,19 @@ export const tmdbSearch = onCall(
     }
 
     const apiKey = TMDB_SECRET.value()
+    if (!apiKey) {
+      console.error('[tmdbSearch] TMDB_API_KEY secret is empty or undefined')
+      throw new HttpsError('internal', 'Chave da API não configurada.')
+    }
     const encoded = encodeURIComponent(q.trim())
-    const path = `/3/search/multi?api_key=${apiKey}&language=pt-BR&query=${encoded}&include_adult=false`
+    const path = `/3/search/multi?language=pt-BR&query=${encoded}&include_adult=false`
+    console.log('[tmdbSearch] calling TMDB query=', q.trim())
 
-    const results = await new Promise<string>((resolve, reject) => {
+    const rawBody = await new Promise<string>((resolve, reject) => {
       const req = https.get(
-        { host: 'api.themoviedb.org', path, headers: { Accept: 'application/json' } },
+        { host: 'api.themoviedb.org', path, headers: { Accept: 'application/json', Authorization: `Bearer ${apiKey}` } },
         (res) => {
+          console.log('[tmdbSearch] TMDB statusCode=', res.statusCode)
           const chunks: Buffer[] = []
           res.on('data', (c: Buffer) => chunks.push(c))
           res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
@@ -805,7 +811,12 @@ export const tmdbSearch = onCall(
       req.end()
     })
 
-    const parsed = JSON.parse(results) as { results: unknown[] }
+    console.log('[tmdbSearch] TMDB raw response (first 300)=', rawBody.slice(0, 300))
+    const parsed = JSON.parse(rawBody) as { results: unknown[]; status_message?: string; success?: boolean }
+    if (parsed.success === false) {
+      console.error('[tmdbSearch] TMDB error:', parsed.status_message)
+    }
+    console.log('[tmdbSearch] results count=', (parsed.results ?? []).length)
     return { results: parsed.results ?? [] }
   },
 )

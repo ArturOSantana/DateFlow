@@ -20,6 +20,11 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
   const [pendingInvites, setPendingInvites] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
+  // Controle de animação do sino e badge
+  const [bellRing, setBellRing] = useState(false)
+  const [badgeKey, setBadgeKey] = useState(0)
+  const prevCountRef = useRef(0)
+
   async function refresh() {
     if (!user?.email || !user?.uid) return
     const [invites, notifs] = await Promise.all([
@@ -29,7 +34,15 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
     setPendingInvites(invites)
     setNotifications(notifs)
     const unread = notifs.filter(n => !n.read).length
-    setCount(invites + unread)
+    const newCount = invites + unread
+    // Aciona animação quando count aumenta
+    if (newCount > prevCountRef.current) {
+      setBellRing(true)
+      setBadgeKey(k => k + 1)
+      setTimeout(() => setBellRing(false), 750)
+    }
+    prevCountRef.current = newCount
+    setCount(newCount)
   }
 
   useEffect(() => {
@@ -127,24 +140,34 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
     <div ref={ref} className="relative">
       <button
         onClick={handleOpen}
-        className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-stone-100 transition-colors"
-        aria-label={hasAny ? `${count} notificaç${count > 1 ? 'ões' : 'ão'} não lida${count > 1 ? 's' : ''}` : 'Notificações'}
+        className="relative w-9 h-9 flex items-center justify-center rounded-[12px] hover:bg-[#F1EFE8] transition-colors"
+        aria-label={hasAny ? `${count > 99 ? '99+' : count} notificaç${count > 1 ? 'ões' : 'ão'} não lida${count > 1 ? 's' : ''}` : 'Notificações'}
         title="Notificações"
       >
-        <Bell size={18} className="text-stone-600" />
+        {/* Sino com animação de chacoalho */}
+        <Bell
+          size={18}
+          className={`text-[#5F5E5A] ${bellRing ? 'animate-bell-ring' : ''}`}
+          aria-hidden="true"
+        />
+        {/* Badge com entrada animada a cada nova notificação */}
         {hasAny && (
-          <span className="absolute top-1 right-1 min-w-[14px] h-[14px] bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center rounded-full px-[3px]">
-            {count > 9 ? '9+' : count}
+          <span
+            key={badgeKey}
+            className="animate-badge-new absolute top-1 right-1 min-w-[14px] h-[14px] bg-[#FF6B8A] text-white text-[9px] font-bold leading-none flex items-center justify-center rounded-full px-[3px]"
+            aria-hidden="true"
+          >
+            {count > 99 ? '99+' : count > 9 ? '9+' : count}
           </span>
         )}
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-11 w-[min(320px,calc(100vw-1.5rem))] bg-white border border-stone-200 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 top-11 w-[min(320px,calc(100vw-1.5rem))] bg-white border border-stone-200 rounded-xl shadow-lg z-50 overflow-hidden animate-modal-slide-up">
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
             <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide">Notificações</p>
-            <button onClick={() => setOpen(false)} className="text-stone-400 hover:text-stone-600">
+            <button onClick={() => setOpen(false)} className="text-stone-400 hover:text-stone-600 transition-transform active:scale-90">
               <X size={14} />
             </button>
           </div>
@@ -154,7 +177,7 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
             {pendingInvites > 0 && (
               <button
                 onClick={goToPartner}
-                className="w-full text-left px-4 py-3 hover:bg-stone-50 transition-colors flex items-start gap-3"
+                className="w-full text-left px-4 py-3 hover:bg-stone-50 transition-colors flex items-start gap-3 animate-notif-row-in"
               >
                 <span className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center shrink-0 mt-0.5">
                   <Bell size={13} className="text-rose-500" />
@@ -169,13 +192,14 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
             )}
 
             {/* Notificações */}
-            {notifications.map(n => {
+            {notifications.map((n, idx) => {
               const style = getNotifStyle(n.type)
               return (
                 <button
                   key={n.id}
                   onClick={() => goToDate(n.dateId)}
-                  className={`w-full text-left px-4 py-3 hover:bg-stone-50 transition-colors flex items-start gap-3 ${!n.read ? 'bg-stone-50/60' : ''}`}
+                  className={`w-full text-left px-4 py-3 hover:bg-stone-50 transition-colors flex items-start gap-3 animate-notif-row-in ${!n.read ? 'bg-stone-50/60' : ''}`}
+                  style={{ animationDelay: `${idx * 0.04}s` }}
                 >
                   <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${style.bg}`}>
                     {style.icon}
@@ -197,14 +221,14 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: () => vo
                     </p>
                   </div>
                   {!n.read && (
-                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+                    <span className="animate-badge-pop w-2 h-2 rounded-full bg-[#FF6B8A] shrink-0 mt-1.5" />
                   )}
                 </button>
               )
             })}
 
             {pendingInvites === 0 && notifications.length === 0 && (
-              <div className="px-4 py-6 text-center">
+              <div className="px-4 py-6 text-center animate-fade-in">
                 <Check size={20} className="text-stone-300 mx-auto mb-2" />
                 <p className="text-sm text-stone-400">Tudo em dia!</p>
               </div>

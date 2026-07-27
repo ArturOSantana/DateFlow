@@ -9,25 +9,25 @@ export default function LoginPage() {
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       {/* Fundo decorativo sutil */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-ember-100 rounded-full opacity-40" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-rose-100 rounded-full opacity-30" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-ember-100 rounded-full opacity-40 animate-float" style={{ animationDelay: '0s' }} />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-rose-100 rounded-full opacity-30 animate-float" style={{ animationDelay: '1.4s' }} />
       </div>
 
       <div className="w-full max-w-sm relative">
         {/* Logo */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 animate-pop-in">
           <img src={logoHorizontal} alt="DateFlow" className="h-14 mx-auto mb-3" />
-          <p className="text-sm text-stone-500 mt-1.5">Planeje os encontros que importam.</p>
+          <p className="text-sm text-stone-500 mt-1.5 animate-fade-in stagger-2">Planeje os encontros que importam.</p>
         </div>
 
         {/* Card de login */}
-        <div className="card p-6">
+        <div className="card p-6 animate-slide-up stagger-3">
           <p className="text-xs text-stone-500 text-center mb-5">
             Entre com sua conta Google para começar
           </p>
 
           {authError && (
-            <p className="text-xs text-red-600 text-center mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-600 text-center mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 animate-bounce-in">
               {authError}
             </p>
           )}
@@ -35,7 +35,7 @@ export default function LoginPage() {
           <button
             onClick={signInWithGoogle}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm font-medium text-stone-700 hover:bg-stone-50 hover:border-stone-300 active:scale-[.98] transition-all disabled:opacity-50 shadow-sm"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm font-medium text-stone-700 hover:bg-stone-50 hover:border-stone-300 active:scale-[.98] transition-all duration-200 disabled:opacity-50 shadow-sm hover:shadow-md"
           >
             <svg width="18" height="18" viewBox="0 0 48 48">
               <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>

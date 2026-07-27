@@ -50,16 +50,12 @@ const TMDB_GENRES: Record<number, string> = {
 }
 
 async function searchTmdb(q: string): Promise<TmdbResult[]> {
-  try {
-    const fn = httpsCallable<{ q: string }, { results: TmdbResult[] }>(
-      getFunctions(undefined, 'southamerica-east1'),
-      'tmdbSearch',
-    )
-    const res = await fn({ q })
-    return (res.data.results ?? []).filter(r => r.media_type === 'movie' || r.media_type === 'tv')
-  } catch {
-    return []
-  }
+  const fn = httpsCallable<{ q: string }, { results: TmdbResult[] }>(
+    getFunctions(undefined, 'southamerica-east1'),
+    'tmdbSearch',
+  )
+  const res = await fn({ q })
+  return (res.data.results ?? []).filter(r => r.media_type === 'movie' || r.media_type === 'tv')
 }
 
 function releaseYear(r: TmdbResult) {
@@ -117,6 +113,7 @@ export default function WatchlistPage() {
   const [filterMedia,  setFilterMedia]  = useState<FilterMedia>('all')
   const [filterOpen,   setFilterOpen]   = useState(false)
   const [errorMsg,     setErrorMsg]     = useState<string | null>(null)
+  const [searchError,  setSearchError]  = useState<string | null>(null)
 
   // busca
   const [searchOpen,    setSearchOpen]    = useState(false)
@@ -159,11 +156,13 @@ export default function WatchlistPage() {
     if (!user) return
     setLoading(true)
     try {
+      console.log('[watchlist] getWatchlist uid=', user.uid, 'partnerId=', partnerId)
       const data = await dbApi.getWatchlist(user.uid, partnerId ?? '')
+      console.log('[watchlist] getWatchlist ok, items=', data.length)
       setItems(data)
     } catch (err) {
-      console.error('[watchlist] refresh error:', err)
-      // índice ainda sendo construído no Firestore — não bloqueia
+      console.error('[watchlist] refresh error (getWatchlist):', err)
+      setErrorMsg(`Erro ao carregar lista: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
@@ -174,12 +173,23 @@ export default function WatchlistPage() {
   // debounce search
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!searchQuery.trim()) { setSearchResults([]); return }
+    if (!searchQuery.trim()) { setSearchResults([]); setSearchError(null); return }
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
-      try { setSearchResults(await searchTmdb(searchQuery)) }
-      finally { setSearching(false) }
+      setSearchError(null)
+      try {
+        const results = await searchTmdb(searchQuery)
+        console.log('[watchlist] searchTmdb results=', results.length, results.map(r => r.title ?? r.name))
+        setSearchResults(results)
+      } catch (err: unknown) {
+        console.error('[watchlist] searchTmdb error:', err)
+        const msg = err instanceof Error ? err.message : String(err)
+        setSearchError(`Erro na busca: ${msg}`)
+        setSearchResults([])
+      } finally {
+        setSearching(false)
+      }
     }, 400)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchQuery])
@@ -190,6 +200,7 @@ export default function WatchlistPage() {
     setErrorMsg(null)
     try {
       const coupleIds = partnerId ? [user.uid, partnerId] : [user.uid]
+      console.log('[watchlist] handleAdd uid=', user.uid, 'coupleIds=', coupleIds, 'tmdb=', r.id)
       const payload: Omit<WatchlistItem, 'id' | 'createdAt' | 'updatedAt'> = {
         addedByUserId:  user.uid,
         addedByName:    user.displayName ?? user.email ?? 'Você',
@@ -436,8 +447,18 @@ export default function WatchlistPage() {
 
       {/* ── Lista ── */}
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-6 h-6 border-2 border-stone-200 border-t-stone-700 rounded-full animate-spin" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card p-3.5 flex gap-3" style={{ animationDelay: `${i * 0.07}s` }}>
+              <div className="skeleton shrink-0 w-[68px] min-h-[102px] rounded-lg" />
+              <div className="flex-1 flex flex-col gap-2 py-1">
+                <div className="skeleton h-3 w-16 rounded" />
+                <div className="skeleton h-4 w-full rounded" />
+                <div className="skeleton h-4 w-3/4 rounded" />
+                <div className="skeleton h-3 w-12 rounded mt-auto" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -452,10 +473,11 @@ export default function WatchlistPage() {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {filtered.map(item => (
+          {filtered.map((item, idx) => (
             <WatchlistCard
               key={item.id}
               item={item}
+              index={idx}
               isOwner={item.addedByUserId === user?.uid}
               myReview={getMyReview(item)}
               partnerReview={getPartnerReview(item)}
@@ -492,12 +514,17 @@ export default function WatchlistPage() {
               </div>
             )}
 
-            {!searching && searchResults.length > 0 && (
+            {!searching && searchError && (
+              <p className="text-sm text-red-500 text-center py-6">{searchError}</p>
+            )}
+
+            {!searching && !searchError && searchResults.length > 0 && (
               <div className="space-y-1 max-h-[55vh] overflow-y-auto -mx-1 px-1">
-                {searchResults.slice(0, 12).map(r => (
+                {searchResults.slice(0, 12).map((r, idx) => (
                   <TmdbResultRow
                     key={r.id}
                     result={r}
+                    index={idx}
                     alreadyAdded={items.some(i => i.tmdbId === r.id)}
                     isLoading={adding === r.id}
                     onAdd={() => handleAdd(r)}
@@ -506,7 +533,7 @@ export default function WatchlistPage() {
               </div>
             )}
 
-            {!searching && searchQuery.trim() && searchResults.length === 0 && (
+            {!searching && !searchError && searchQuery.trim() && searchResults.length === 0 && (
               <p className="text-sm text-stone-400 text-center py-6">Nenhum resultado.</p>
             )}
 
@@ -779,6 +806,7 @@ export default function WatchlistPage() {
 
 interface CardProps {
   item: WatchlistItem
+  index: number
   isOwner: boolean
   myReview: WatchlistReview | undefined
   partnerReview: WatchlistReview | undefined
@@ -789,13 +817,24 @@ interface CardProps {
 }
 
 function WatchlistCard({
-  item, isOwner, myReview, partnerReview, partnerName,
+  item, index, isOwner, myReview, partnerReview, partnerName,
   onDelete, onMarkWatched, onReview,
 }: CardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [justWatched, setJustWatched] = useState(false)
+
+  function handleMarkWatched() {
+    setJustWatched(true)
+    setTimeout(() => setJustWatched(false), 600)
+    onMarkWatched()
+  }
+
+  const staggerClass = index < 10 ? `stagger-${index + 1}` : ''
 
   return (
-    <div className={`card flex flex-col overflow-hidden ${item.status === 'watched' ? 'opacity-90' : ''}`}>
+    <div
+      className={`card flex flex-col overflow-hidden animate-card-enter ${staggerClass} ${item.status === 'watched' ? 'opacity-90' : ''}`}
+    >
 
       {/* Conteúdo principal */}
       <div className="flex gap-3 p-3.5">
@@ -920,10 +959,13 @@ function WatchlistCard({
       <div className="flex items-center border-t border-stone-100">
         {item.status === 'to_watch' && (
           <button
-            onClick={onMarkWatched}
+            onClick={handleMarkWatched}
             className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-stone-500 hover:text-green-700 hover:bg-green-50 active:bg-green-100 transition-colors"
           >
-            <CheckCircle2 size={13} />
+            <CheckCircle2
+              size={13}
+              className={justWatched ? 'animate-check-burst text-green-600' : ''}
+            />
             Assistido
           </button>
         )}
@@ -950,15 +992,17 @@ function WatchlistCard({
 // ─── Row resultado TMDB ───────────────────────────────────────────────────────
 
 function TmdbResultRow({
-  result, alreadyAdded, isLoading, onAdd,
+  result, index, alreadyAdded, isLoading, onAdd,
 }: {
   result: TmdbResult
+  index: number
   alreadyAdded: boolean
   isLoading: boolean
   onAdd: () => void
 }) {
+  const staggerClass = index < 10 ? `stagger-${index + 1}` : ''
   return (
-    <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-stone-50 active:bg-stone-100 transition-colors">
+    <div className={`flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-stone-50 active:bg-stone-100 transition-colors animate-row-in ${staggerClass}`}>
       {/* Poster */}
       <div className="w-10 h-[60px] rounded-lg overflow-hidden bg-stone-100 shrink-0">
         {result.poster_path ? (

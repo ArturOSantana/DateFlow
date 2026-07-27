@@ -62,7 +62,7 @@ export default function DatesPage() {
   }, [allDates, search])
 
   return (
-    <div className="p-5 md:p-7">
+    <div className="p-5 md:p-7 animate-page-enter">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold text-stone-900">Dates</h1>

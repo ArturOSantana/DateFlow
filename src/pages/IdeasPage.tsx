@@ -81,7 +81,7 @@ export default function IdeasPage() {
   }
 
   return (
-    <div className="p-5 md:p-7">
+    <div className="p-5 md:p-7 animate-page-enter">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-base font-semibold text-stone-900">Banco de Ideias</h1>
@@ -165,8 +165,12 @@ export default function IdeasPage() {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {filtered.map(idea => (
-            <div key={idea.id} className="card p-4 flex flex-col gap-2">
+          {filtered.map((idea, idx) => (
+            <div
+              key={idea.id}
+              className="card p-4 flex flex-col gap-2 animate-slide-up"
+              style={{ animationDelay: `${idx * 0.05}s` }}
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-medium text-stone-900 text-sm leading-snug">{idea.name}</p>

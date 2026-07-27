@@ -7,6 +7,25 @@ export default {
         xs: '400px',
       },
       colors: {
+        // ── Design tokens DateFlow ────────────────────────────────────────
+        bg:      '#FAF9F7',
+        surface: {
+          DEFAULT: '#FFFFFF',
+          muted:   '#F1EFE8',
+        },
+        text: {
+          primary: '#2C2C2A',
+          muted:   '#5F5E5A',
+          faint:   '#8A8983',
+        },
+        accent: {
+          coral:  '#FF6B8A',
+          orange: '#FF9E5E',
+          purple: '#8A5CF6',
+        },
+        success: '#3FA66B',
+        danger:  '#E5484D',
+        // ── Palette stone (manter para componentes existentes) ────────────
         stone: {
           50:  '#faf9f7',
           100: '#f5f4f0',
@@ -34,6 +53,14 @@ export default {
       },
       fontFamily: {
         sans: ['"Inter"', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        sm: '8px',
+        md: '12px',
+        lg: '18px',
+        xl: '28px',
+        '2xl': '16px',
+        '3xl': '24px',
       },
     },
   },

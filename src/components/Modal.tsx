@@ -16,15 +16,15 @@ export default function Modal({ open, onClose, title, children, width = 'max-w-l
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-stone-900/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-stone-900/30 backdrop-blur-sm animate-backdrop-in"
         onClick={onClose}
       />
 
       {/* Panel */}
-      <div className={`relative w-full ${width} bg-white rounded-t-2xl sm:rounded-2xl border border-stone-200 overflow-hidden`}>
+      <div className={`relative w-full ${width} bg-white rounded-t-2xl sm:rounded-2xl border border-stone-200 overflow-hidden animate-modal-slide-up`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
           <h2 className="text-sm font-semibold text-stone-900">{title}</h2>
-          <button onClick={onClose} className="btn-ghost p-1.5 -mr-1.5">
+          <button onClick={onClose} className="btn-ghost p-1.5 -mr-1.5 transition-transform active:scale-90">
             <X size={15} />
           </button>
         </div>

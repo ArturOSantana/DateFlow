@@ -635,10 +635,16 @@ exports.tmdbSearch = (0, https_1.onCall)({
         throw new https_1.HttpsError('invalid-argument', 'Consulta muito longa.');
     }
     const apiKey = TMDB_SECRET.value();
+    if (!apiKey) {
+        console.error('[tmdbSearch] TMDB_API_KEY secret is empty or undefined');
+        throw new https_1.HttpsError('internal', 'Chave da API não configurada.');
+    }
     const encoded = encodeURIComponent(q.trim());
-    const path = `/3/search/multi?api_key=${apiKey}&language=pt-BR&query=${encoded}&include_adult=false`;
-    const results = await new Promise((resolve, reject) => {
-        const req = https.get({ host: 'api.themoviedb.org', path, headers: { Accept: 'application/json' } }, (res) => {
+    const path = `/3/search/multi?language=pt-BR&query=${encoded}&include_adult=false`;
+    console.log('[tmdbSearch] calling TMDB query=', q.trim());
+    const rawBody = await new Promise((resolve, reject) => {
+        const req = https.get({ host: 'api.themoviedb.org', path, headers: { Accept: 'application/json', Authorization: `Bearer ${apiKey}` } }, (res) => {
+            console.log('[tmdbSearch] TMDB statusCode=', res.statusCode);
             const chunks = [];
             res.on('data', (c) => chunks.push(c));
             res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
@@ -646,7 +652,12 @@ exports.tmdbSearch = (0, https_1.onCall)({
         req.on('error', reject);
         req.end();
     });
-    const parsed = JSON.parse(results);
+    console.log('[tmdbSearch] TMDB raw response (first 300)=', rawBody.slice(0, 300));
+    const parsed = JSON.parse(rawBody);
+    if (parsed.success === false) {
+        console.error('[tmdbSearch] TMDB error:', parsed.status_message);
+    }
+    console.log('[tmdbSearch] results count=', (parsed.results ?? []).length);
     return { results: parsed.results ?? [] };
 });
 //# sourceMappingURL=index.js.map
