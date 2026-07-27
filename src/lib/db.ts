@@ -359,7 +359,9 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
   return Boolean(snap.data()?.onboardingDoneAt)
 }
 
-/**
+/*
+
+a
  * Marca o onboarding como concluído e salva gênero + preferências do usuário.
  */
 export async function saveOnboardingData(
