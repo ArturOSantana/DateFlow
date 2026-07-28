@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2, DollarSign, EyeOff, Eye, Lightbulb, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -6,7 +6,7 @@ import { useApp } from '../contexts/AppContext'
 import * as dbApi from '../lib/db'
 import { generateId, generateShareToken } from '../lib/utils'
 import { getPronouns } from '../lib/gender'
-import type { ChecklistItem, DateEvent, DateStatus, Partnership } from '../types'
+import type { ChecklistItem, DateEvent, DateStatus } from '../types'
 
 const EMPTY: Omit<DateEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
   title: '',
@@ -27,17 +27,11 @@ export default function DateForm() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { dates, refreshDates } = useApp()
+  const { dates, refreshDates, partnerships: allPartnerships } = useApp()
   const isEdit = Boolean(id)
 
-  // Parcerias ativas — para o seletor "esse date é com quem"
-  const [partnerships, setPartnerships] = useState<Partnership[]>([])
-  useEffect(() => {
-    if (!user) return
-    dbApi.getMyPartnerships(user.uid, user.email ?? undefined).then(all =>
-      setPartnerships(all.filter(p => p.status === 'accepted'))
-    )
-  }, [user])
+  // Parcerias ativas — vindas do cache do AppContext, sem read adicional
+  const partnerships = allPartnerships.filter(p => p.status === 'accepted')
 
   const existing = isEdit ? dates.find(d => d.id === id) : undefined
 
@@ -148,10 +142,9 @@ export default function DateForm() {
             })
           ))
 
-          // Envia e-mail com convite atualizado para a parceira (se vinculada e tiver e-mail)
+          // Envia e-mail com convite atualizado para a parceira (usa cache do AppContext)
           if (form.withPartnerId && form.withPartnerId !== user!.uid) {
-            const allPartners = await dbApi.getMyPartnerships(user!.uid, user!.email ?? undefined)
-            const p = allPartners.find(x =>
+            const p = partnerships.find(x =>
               x.requesterId === form.withPartnerId || x.recipientId === form.withPartnerId
             )
             if (p) {
@@ -190,9 +183,8 @@ export default function DateForm() {
             timeValue: form.time,
           })
 
-          // Envia e-mail com convite .ics para a parceira
-          const allPartners = await dbApi.getMyPartnerships(user!.uid, user!.email ?? undefined)
-          const p = allPartners.find(x =>
+          // Envia e-mail com convite .ics para a parceira (usa cache do AppContext)
+          const p = partnerships.find(x =>
             x.requesterId === form.withPartnerId || x.recipientId === form.withPartnerId
           )
           if (p) {

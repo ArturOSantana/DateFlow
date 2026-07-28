@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Edit2, Trash2, CheckCircle2, Circle, Share2, CalendarPlus,
@@ -15,7 +15,7 @@ import { downloadIcs } from '../lib/ics'
 import { getPronouns } from '../lib/gender'
 import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
-import type { DateStatus, ExpenseItem, PartnerGender, QuickQuestion } from '../types'
+import type { DateStatus, ExpenseItem, QuickQuestion } from '../types'
 import { POST_DATE_QUESTIONS } from '../types'
 
 const COURAGE_QUOTES = [
@@ -53,28 +53,29 @@ function buildMapsUrl(location: string): { google: string; apple: string | null;
 export default function DateDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { dates, refreshDates } = useApp()
+  const { dates, refreshDates, partnerships, updateDateLocally } = useApp()
   const { user } = useAuth()
 
   const date = dates.find(d => d.id === id)
 
-  // Nome e gênero de quem é o date (withPartnerId resolvido)
-  const [withPartnerName, setWithPartnerName] = useState<string | null>(null)
-  const [withPartnerGender, setWithPartnerGender] = useState<PartnerGender | undefined>(undefined)
-  useEffect(() => {
-    if (!user || !date?.withPartnerId) { setWithPartnerName(null); setWithPartnerGender(undefined); return }
-    dbApi.getMyPartnerships(user.uid, user.email ?? undefined).then(all => {
-      const p = all.find(p =>
-        p.requesterId === date.withPartnerId || p.recipientId === date.withPartnerId
-      )
-      if (!p) return
-      const isMe = p.requesterId === user.uid
-      const name  = isMe ? p.recipientName  : p.requesterName
-      const email = isMe ? p.recipientEmail : p.requesterEmail
-      setWithPartnerName(name || email || null)
-      setWithPartnerGender(p.partnerGender)
-    })
-  }, [user, date?.withPartnerId])
+  // Nome e gênero de quem é o date — resolvido via partnerships já em cache
+  const withPartnerName = (() => {
+    if (!date?.withPartnerId) return null
+    const p = partnerships.find(p =>
+      p.requesterId === date.withPartnerId || p.recipientId === date.withPartnerId
+    )
+    if (!p || !user) return null
+    const isMe = p.requesterId === user.uid
+    return (isMe ? p.recipientName : p.requesterName) || (isMe ? p.recipientEmail : p.requesterEmail) || null
+  })()
+
+  const withPartnerGender = (() => {
+    if (!date?.withPartnerId) return undefined
+    const p = partnerships.find(p =>
+      p.requesterId === date.withPartnerId || p.recipientId === date.withPartnerId
+    )
+    return p?.partnerGender
+  })()
 
   const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -102,14 +103,15 @@ export default function DateDetail() {
   async function saveRating(stars: number) {
     if (!date) return
     await dbApi.updateDate(date.id, { rating: stars })
-    await refreshDates()
+    updateDateLocally(date.id, { rating: stars })
   }
 
   async function saveReview() {
     if (!date) return
     setSavingReview(true)
-    await dbApi.updateDate(date.id, { review: reviewText.trim() || undefined })
-    await refreshDates()
+    const review = reviewText.trim() || undefined
+    await dbApi.updateDate(date.id, { review })
+    updateDateLocally(date.id, { review })
     setSavingReview(false)
   }
 
@@ -119,7 +121,7 @@ export default function DateDetail() {
     setQuickAnswers(updated)
     setSavingQuick(true)
     await dbApi.updateDate(date.id, { quickAnswers: updated })
-    await refreshDates()
+    updateDateLocally(date.id, { quickAnswers: updated })
     setSavingQuick(false)
   }
 
@@ -134,7 +136,7 @@ export default function DateDetail() {
     const newTotal = updated.reduce((s, e) => s + e.amount, 0)
 
     await dbApi.updateDate(date.id, { expenses: updated, actualCost: newTotal })
-    await refreshDates()
+    updateDateLocally(date.id, { expenses: updated, actualCost: newTotal })
     setExpenseLabel('')
     setExpenseAmount('')
     amountRef.current?.focus()
@@ -144,20 +146,23 @@ export default function DateDetail() {
     if (!date) return
     const updated = (date.expenses ?? []).filter(e => e.id !== expenseId)
     const newTotal = updated.reduce((s, e) => s + e.amount, 0)
-    await dbApi.updateDate(date.id, { expenses: updated, actualCost: updated.length ? newTotal : undefined })
-    await refreshDates()
+    const patch = { expenses: updated, actualCost: updated.length ? newTotal : undefined }
+    await dbApi.updateDate(date.id, patch)
+    updateDateLocally(date.id, patch)
   }
 
   async function toggleShareFinance() {
     if (!date) return
-    await dbApi.updateDate(date.id, { shareFinance: !date.shareFinance })
-    await refreshDates()
+    const shareFinance = !date.shareFinance
+    await dbApi.updateDate(date.id, { shareFinance })
+    updateDateLocally(date.id, { shareFinance })
   }
 
   async function toggleHiddenFromPartner() {
     if (!date) return
-    await dbApi.updateDate(date.id, { hiddenFromPartner: !date.hiddenFromPartner })
-    await refreshDates()
+    const hiddenFromPartner = !date.hiddenFromPartner
+    await dbApi.updateDate(date.id, { hiddenFromPartner })
+    updateDateLocally(date.id, { hiddenFromPartner })
   }
 
   async function addHint() {
@@ -167,7 +172,7 @@ export default function DateDetail() {
     const updated = [...(date.partnerHints ?? []), text]
     setSavingHints(true)
     await dbApi.updateDate(date.id, { partnerHints: updated })
-    await refreshDates()
+    updateDateLocally(date.id, { partnerHints: updated })
     setNewHint('')
     setSavingHints(false)
   }
@@ -176,7 +181,7 @@ export default function DateDetail() {
     if (!date) return
     const updated = (date.partnerHints ?? []).filter((_, idx) => idx !== i)
     await dbApi.updateDate(date.id, { partnerHints: updated })
-    await refreshDates()
+    updateDateLocally(date.id, { partnerHints: updated })
   }
 
   if (!date) {
@@ -193,12 +198,16 @@ export default function DateDetail() {
   async function setStatus(status: DateStatus) {
     if (!date || !user) return
     await dbApi.updateDate(date.id, { status })
+    updateDateLocally(date.id, { status })
 
     const fromName = user.displayName ?? user.email ?? 'Parceiro(a)'
     const dateTitle = date.hiddenFromPartner ? 'Surpresa' : date.title
 
-    // Notificações + e-mail para a parceira vinculada
+    // Notificações + e-mail para a parceira vinculada (usa parcerias em cache)
     if (date.withPartnerId && date.withPartnerId !== user.uid) {
+      const cachedPartnership = partnerships.find(x =>
+        x.requesterId === date.withPartnerId || x.recipientId === date.withPartnerId
+      )
       if (status === 'cancelled') {
         await dbApi.createNotification({
           toUserId: date.withPartnerId,
@@ -207,15 +216,10 @@ export default function DateDetail() {
           dateTitle,
           fromName,
         })
-        // E-mail de cancelamento (sem .ics)
-        const partnerships = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
-        const p = partnerships.find(x =>
-          x.requesterId === date.withPartnerId || x.recipientId === date.withPartnerId
-        )
-        if (p) {
-          const isMe = p.requesterId === user.uid
-          const toEmail = isMe ? p.recipientEmail : p.requesterEmail
-          const toName  = isMe ? p.recipientName  : p.requesterName
+        if (cachedPartnership) {
+          const isMe = cachedPartnership.requesterId === user.uid
+          const toEmail = isMe ? cachedPartnership.recipientEmail : cachedPartnership.requesterEmail
+          const toName  = isMe ? cachedPartnership.recipientName  : cachedPartnership.requesterName
           if (toEmail) {
             await dbApi.callSendEmailInvite({
               dateId: date.id, toEmail, toName: toName || toEmail,
@@ -233,15 +237,10 @@ export default function DateDetail() {
           dateValue: date.date,
           timeValue: date.time,
         })
-        // E-mail de confirmação com .ics atualizado
-        const partnerships = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
-        const p = partnerships.find(x =>
-          x.requesterId === date.withPartnerId || x.recipientId === date.withPartnerId
-        )
-        if (p) {
-          const isMe = p.requesterId === user.uid
-          const toEmail = isMe ? p.recipientEmail : p.requesterEmail
-          const toName  = isMe ? p.recipientName  : p.requesterName
+        if (cachedPartnership) {
+          const isMe = cachedPartnership.requesterId === user.uid
+          const toEmail = isMe ? cachedPartnership.recipientEmail : cachedPartnership.requesterEmail
+          const toName  = isMe ? cachedPartnership.recipientName  : cachedPartnership.requesterName
           if (toEmail) {
             await dbApi.callSendEmailInvite({
               dateId: date.id, toEmail, toName: toName || toEmail,
@@ -261,8 +260,6 @@ export default function DateDetail() {
         })
       }
     }
-
-    await refreshDates()
   }
 
   async function toggleTask(taskId: string) {
@@ -271,7 +268,7 @@ export default function DateDetail() {
       t.id === taskId ? { ...t, done: !t.done } : t,
     )
     await dbApi.updateDate(date.id, { checklist: updated })
-    await refreshDates()
+    updateDateLocally(date.id, { checklist: updated })
   }
 
   async function handleDelete() {
@@ -294,8 +291,7 @@ export default function DateDetail() {
     const d = date!
     if (!user || !d.withPartnerId || sendingEmail) return
 
-    // Busca os dados da parceria para obter o e-mail e nome da parceira
-    const partnerships = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
+    // Usa parcerias em cache do AppContext — sem read adicional ao Firestore
     const partnership = partnerships.find(p =>
       p.requesterId === d.withPartnerId || p.recipientId === d.withPartnerId
     )

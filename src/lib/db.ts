@@ -399,25 +399,17 @@ export interface PartnerBootstrap {
 }
 
 /**
- * Busca em paralelo tudo o que depende da parceria ativa:
- * - gênero do parceiro (do doc userPreferences do parceiro)
- * - gênero do próprio usuário (do doc userPreferences do usuário)
- * - dates planejados pelo parceiro para o usuário
- * - nome do parceiro
- *
- * Substitui as três chamadas separadas de refreshPartnerGender,
- * refreshOwnerGender e refreshIncomingDates — economiza 2 reads de
- * `partnerships` e 1 getDoc de `userPreferences` por sessão.
+ * Variante interna: recebe as parcerias já carregadas e busca apenas os
+ * dados adicionais necessários (userPreferences + incomingDates).
+ * Use este quando as parcerias já estão em cache — economiza 2-3 reads
+ * de `partnerships` por sessão.
  */
-export async function getPartnerBootstrap(
+export async function getPartnerBootstrapFromPartnerships(
+  partnerships: Partnership[],
   userId: string,
-  userEmail?: string,
+  _userEmail?: string,
 ): Promise<PartnerBootstrap> {
-  const [partnerships, ownerSnap] = await Promise.all([
-    getMyPartnerships(userId, userEmail),
-    getDoc(doc(db, 'userPreferences', userId)),
-  ])
-
+  const ownerSnap = await getDoc(doc(db, 'userPreferences', userId))
   const ownerGender = ownerSnap.exists()
     ? (ownerSnap.data() as import('../types').UserPreferences).ownerGender
     : undefined
@@ -452,6 +444,18 @@ export async function getPartnerBootstrap(
   const incomingDates = incomingSnap.docs.map(d => ({ id: d.id, ...d.data() } as DateEvent))
 
   return { partnerGender, ownerGender, incomingDates, partnerName }
+}
+
+/**
+ * @deprecated Use getPartnerBootstrapFromPartnerships quando as parcerias
+ * já estiverem carregadas no AppContext. Mantido para compatibilidade.
+ */
+export async function getPartnerBootstrap(
+  userId: string,
+  userEmail?: string,
+): Promise<PartnerBootstrap> {
+  const partnerships = await getMyPartnerships(userId, userEmail)
+  return getPartnerBootstrapFromPartnerships(partnerships, userId, userEmail)
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────

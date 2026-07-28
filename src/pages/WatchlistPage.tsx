@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useApp } from '../contexts/AppContext'
 import * as dbApi from '../lib/db'
 import type { WatchlistItem, WatchlistMediaType, WatchlistReview } from '../types'
 import Modal from '../components/Modal'
@@ -104,9 +105,17 @@ type FilterMedia  = 'all' | 'movie' | 'tv'
 
 export default function WatchlistPage() {
   const { user } = useAuth()
+  const { partnerships } = useApp()
 
-  const [partnerId,    setPartnerId]    = useState<string | null>(null)
-  const [partnerName,  setPartnerName]  = useState('')
+  // Resolve parceiro ativo a partir das parcerias em cache do AppContext
+  const activePartner = partnerships.find(p => p.status === 'accepted')
+  const partnerId = activePartner
+    ? (activePartner.requesterId === user?.uid ? activePartner.recipientId : activePartner.requesterId) ?? null
+    : null
+  const partnerName = activePartner
+    ? (activePartner.requesterId === user?.uid ? activePartner.recipientName : activePartner.requesterName) ?? ''
+    : ''
+
   const [items,        setItems]        = useState<WatchlistItem[]>([])
   const [loading,      setLoading]      = useState(false)
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
@@ -136,21 +145,6 @@ export default function WatchlistPage() {
   const [displayItem,  setDisplayItem]  = useState<WatchlistItem | null>(null)
   const [drawFilter,   setDrawFilter]   = useState<'all' | 'movie' | 'tv'>('all')
   const drawTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // parceiro ativo
-  useEffect(() => {
-    if (!user) return
-    let cancelled = false
-    ;(async () => {
-      const all = await dbApi.getMyPartnerships(user.uid, user.email ?? undefined)
-      const active = all.find(p => p.status === 'accepted')
-      if (!active || cancelled) return
-      const pid  = active.requesterId === user.uid ? active.recipientId : active.requesterId
-      const name = active.requesterId === user.uid ? active.recipientName : active.requesterName
-      if (!cancelled) { setPartnerId(pid || null); setPartnerName(name || '') }
-    })()
-    return () => { cancelled = true }
-  }, [user])
 
   const refresh = useCallback(async () => {
     if (!user) return
