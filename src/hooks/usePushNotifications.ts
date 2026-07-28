@@ -1,10 +1,12 @@
 /**
  * usePushNotifications.ts
  *
- * 1. Solicita permissão de notificação ao usuário
- * 2. Registra o service worker e passa o userId para ele monitorar o Firestore
- * 3. Exibe notificações nativas quando o app está aberto (via onSnapshot)
- * 4. Limpa a assinatura ao deslogar
+ * 1. Se a permissão já foi concedida, registra o service worker imediatamente
+ * 2. Exibe notificações nativas quando o app está aberto (via onSnapshot)
+ * 3. Limpa a assinatura ao deslogar
+ *
+ * A solicitação de permissão NÃO ocorre aqui — ela só pode ser acionada por
+ * um gesto explícito do usuário (via NotificationPrompt).
  */
 
 import { useEffect, useRef } from 'react'
@@ -38,22 +40,24 @@ export function usePushNotifications(userId: string | null) {
 
     async function setup() {
       if (isNativeAndroid()) {
+        // No Android nativo sempre inicializa (inclui pedido de permissão nativo)
         await initializeNativeNotifications(currentUserId)
       } else {
-        await requestPushPermission(currentUserId)
+        // No browser/PWA só configura o SW se a permissão já foi concedida.
+        // Se ainda for "default", o NotificationPrompt vai pedir via gesto do usuário.
+        if (Notification.permission === 'granted') {
+          await requestPushPermission(currentUserId)
+        }
       }
       if (cancelled) return
 
       unsubRef.current = listenIncomingNotifications(currentUserId, (title, body, url) => {
         if (isNativeAndroid()) {
-          // No Android nativo, sempre dispara a notificação local
-          // independente do estado de visibilidade da WebView
           void showNativeLocalNotification(title, body)
           return
         }
 
         // No browser/PWA, só exibe foreground se o app estiver visível
-        // (em background o service worker trata via onSnapshot)
         if (document.visibilityState !== 'visible') return
 
         if (Notification.permission === 'granted') {

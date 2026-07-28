@@ -1,10 +1,12 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate, Outlet, useSearchParams } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { usePushNotifications } from './hooks/usePushNotifications'
+import { requestPushPermission } from './lib/pushNotifications'
 import { hasCompletedOnboarding, saveOnboardingData } from './lib/db'
 import OnboardingFlow from './components/OnboardingFlow'
+import NotificationPrompt from './components/NotificationPrompt'
 import type { PartnerGender, PreferenceCategory } from './types'
 
 import Sidebar from './components/Sidebar'
@@ -35,13 +37,19 @@ import PartnerPage from './pages/PartnerPage'
 import PartnerViewPage from './pages/PartnerViewPage'
 import WatchlistPage from './pages/WatchlistPage'
 
+// Chave de localStorage para não mostrar o banner mais de uma vez por sessão
+const NOTIF_PROMPT_KEY = 'dateflow_notif_prompt_dismissed'
+
 function ProtectedLayout() {
   const { user, loading } = useAuth()
-  // Registra token FCM e solicita permissão de push ao usuário logado
   usePushNotifications(user?.uid ?? null)
 
   const [onboardingChecked, setOnboardingChecked] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // Controle do banner de permissão de notificação
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false)
+  const notifPromptChecked = useRef(false)
 
   useEffect(() => {
     if (!user) return
@@ -50,6 +58,33 @@ function ProtectedLayout() {
       setOnboardingChecked(true)
     })
   }, [user?.uid])
+
+  // Mostra o banner de notificação se ainda não concedida e não descartada
+  useEffect(() => {
+    if (!user || notifPromptChecked.current) return
+    notifPromptChecked.current = true
+
+    // No Android nativo o pedido é feito pelo Capacitor — não usa banner web
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+
+    if (
+      Notification.permission === 'default' &&
+      !sessionStorage.getItem(NOTIF_PROMPT_KEY)
+    ) {
+      // Pequeno delay para não aparecer junto com o onboarding ou o spinner
+      const t = setTimeout(() => setShowNotifPrompt(true), 1500)
+      return () => clearTimeout(t)
+    }
+  }, [user])
+
+  function handleNotifPromptDone(granted: boolean) {
+    setShowNotifPrompt(false)
+    sessionStorage.setItem(NOTIF_PROMPT_KEY, '1')
+    // Se o usuário concedeu, configura o SW e FCM imediatamente
+    if (granted && user) {
+      void requestPushPermission(user.uid)
+    }
+  }
 
   async function handleOnboardingComplete(data: { gender: PartnerGender; prefs: PreferenceCategory }) {
     if (!user) return
@@ -94,6 +129,14 @@ function ProtectedLayout() {
         <OnboardingFlow
           userName={user.displayName ?? 'você'}
           onComplete={handleOnboardingComplete}
+        />
+      )}
+
+      {/* Banner de permissão de notificação */}
+      {showNotifPrompt && !showOnboarding && user && (
+        <NotificationPrompt
+          userId={user.uid}
+          onDone={(granted) => handleNotifPromptDone(granted ?? false)}
         />
       )}
     </div>
